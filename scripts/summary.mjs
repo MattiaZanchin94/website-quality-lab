@@ -22,8 +22,10 @@ const label = (r, name) => r.labels?.find((l) => l.name === name)?.value ?? null
 const tests = results
   .map((r) => ({
     name: r.name,
-    // Per i [TestCase] includiamo i parametri, es. "MenuItemOpensExpectedPage (Carriera)".
-    title: r.parameters?.length ? `${r.name} (${r.parameters[0].value.replaceAll('"', "")})` : r.name,
+    // Il nome leggibile impostato con [AllureName] o AllureApi.SetTestName nei test C#.
+    title: r.name,
+    // Nome del metodo C#, es. "MenuItemOpensExpectedPage" (senza firma dei parametri).
+    method: r.fullName?.replace(/\(.*\)$/, "").split(".").pop() ?? null,
     feature: label(r, "feature"),
     severity: label(r, "severity"),
     status: r.status, // passed | failed | broken | skipped

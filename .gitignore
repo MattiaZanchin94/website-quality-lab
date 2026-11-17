@@ -486,3 +486,4 @@ node_modules/
 allure-report/
 allure-results/
 history.jsonl
+dist/

@@ -14,6 +14,7 @@ public class WebsiteAvailabilityTests : PageTest
     private const string BaseUrl = "https://mattiazanchin.com";
 
     [Test]
+    [AllureName("Il sito è raggiungibile e si carica correttamente")]
     [AllureSeverity(SeverityLevel.blocker)]
     [AllureDescription("La home page risponde con HTTP 200 e viene visualizzata.")]
     public async Task WebsiteIsOnline()

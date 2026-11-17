@@ -23,8 +23,12 @@ public class NavigationTests : PageTest
     [TestCase("Origini", "/origini/")]
     [TestCase("Carriera", "/carriera/")]
     [TestCase("Articoli tecnici", "/category/articoli-tecnici/")]
+    [TestCase("Playground", "/playground/")]
     public async Task MenuItemOpensExpectedPage(string menuLabel, string expectedPath)
     {
+        // Con [TestCase] il nome dipende dai dati, quindi lo impostiamo a runtime.
+        AllureApi.SetTestName($"La voce di menu «{menuLabel}» porta alla pagina giusta");
+
         await Page.GotoAsync(BaseUrl);
 
         // Il tema ha due menu (desktop e mobile): prendiamo solo il link visibile nell'header.

@@ -84,17 +84,28 @@ jobs:
       - name: Generate Allure report
         run: npx allure generate "$RESULTS_DIR" --clean
 
-      - name: Write summary.json
+      # Il report Allure completo NON viene pubblicato: resta un artifact dell'esecuzione,
+      # scaricabile dalla pagina del run su GitHub (sezione "Artifacts").
+      - name: Keep Allure report as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: allure-report
+          retention-days: 30
+
+      # Su GitHub Pages pubblichiamo solo i dati che servono alla pagina Playground.
+      - name: Prepare public data
         env:
           RUN_TRIGGER: ${{ github.event_name == 'workflow_dispatch' && inputs.source || github.event_name }}
         run: |
-          node scripts/summary.mjs "$RESULTS_DIR" allure-report/summary.json
-          cp history.jsonl allure-report/history.jsonl
+          mkdir -p public
+          node scripts/summary.mjs "$RESULTS_DIR" public/summary.json
+          cp history.jsonl public/history.jsonl
 
-      - name: Upload report
+      - name: Upload public data
         uses: actions/upload-pages-artifact@v4
         with:
-          path: allure-report
+          path: public
 
       - name: Deploy to GitHub Pages
         id: deploy
@@ -103,5 +114,5 @@ jobs:
       - name: Fail the job if tests failed
         if: steps.tests.outcome == 'failure'
         run: |
-          echo "::error::Uno o più test E2E sono falliti. Vedi il report: $PAGES_URL"
+          echo "::error::Uno o più test E2E sono falliti. Scarica il report Allure dagli Artifacts di questa esecuzione."
           exit 1

@@ -16,6 +16,7 @@ public class ArticleTests : PageTest
     private const string CategoryUrl = "https://mattiazanchin.com/category/articoli-tecnici/";
 
     [Test]
+    [AllureName("L'ultimo articolo pubblicato si apre con titolo e contenuto")]
     public async Task LatestTechnicalArticleOpens()
     {
         await Page.GotoAsync(CategoryUrl);

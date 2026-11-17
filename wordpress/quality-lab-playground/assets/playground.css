@@ -1,0 +1,70 @@
+/* Quality Lab Playground – stili isolati con prefisso .qlp per non toccare il tema. */
+.qlp {
+  --qlp-ok: #1a7f37;
+  --qlp-ok-bg: #e6f4ea;
+  --qlp-ko: #c62828;
+  --qlp-ko-bg: #fdecea;
+  --qlp-border: #e3e5e8;
+  --qlp-muted: #5f6670;
+  --qlp-accent: #1d4ed8;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.qlp-card {
+  border: 1px solid var(--qlp-border);
+  border-radius: 12px;
+  padding: 24px;
+  background: #fff;
+  transition: box-shadow 0.4s;
+}
+.qlp-updated { box-shadow: 0 0 0 3px var(--qlp-ok-bg); }
+
+.qlp-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.qlp-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 4px 12px; border-radius: 999px; font-weight: 600; font-size: 14px;
+}
+.qlp-ok { color: var(--qlp-ok); background: var(--qlp-ok-bg); }
+.qlp-ko { color: var(--qlp-ko); background: var(--qlp-ko-bg); }
+.qlp-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.qlp-ok .qlp-dot { animation: qlp-pulse 2s infinite; }
+@keyframes qlp-pulse { 50% { opacity: 0.35; } }
+.qlp-meta { color: var(--qlp-muted); font-size: 14px; }
+
+.qlp-stats {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px; margin: 24px 0;
+}
+.qlp-stat { border: 1px solid var(--qlp-border); border-radius: 10px; padding: 12px 16px; }
+.qlp-num { display: block; font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.qlp-label { color: var(--qlp-muted); font-size: 13px; }
+
+.qlp-group h4 { margin: 16px 0 6px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--qlp-muted); }
+.qlp-group ul { list-style: none; margin: 0; padding: 0; }
+.qlp-group li {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 0; border-bottom: 1px dashed var(--qlp-border);
+}
+.qlp-name { flex: 1; font-size: 15px; overflow-wrap: anywhere; }
+.qlp-icon { width: 20px; text-align: center; font-weight: 700; }
+.qlp-t-passed .qlp-icon { color: var(--qlp-ok); }
+.qlp-t-failed .qlp-icon, .qlp-t-broken .qlp-icon { color: var(--qlp-ko); }
+.qlp-dur { color: var(--qlp-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+
+.qlp-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-top: 24px; }
+.qlp-run {
+  border: 0; border-radius: 8px; padding: 10px 20px; cursor: pointer;
+  background: var(--qlp-accent); color: #fff; font-size: 15px; font-weight: 600;
+}
+.qlp-run:disabled { background: #9aa3ad; cursor: default; }
+.qlp-link { font-size: 15px; }
+
+.qlp-progress { margin: 20px 0 0; padding-left: 20px; color: var(--qlp-muted); font-size: 14px; }
+.qlp-progress .qlp-done { color: var(--qlp-ok); }
+.qlp-progress .qlp-done::after { content: " ✓"; }
+.qlp-progress .qlp-now { color: inherit; font-weight: 600; }
+.qlp-progress .qlp-now::after { content: " …"; }
+
+.qlp-message { margin: 16px 0 0; font-size: 14px; }
+.qlp-error, .qlp-loading { color: var(--qlp-muted); }
