@@ -54,6 +54,44 @@
 
   const STATUS_ICON = { passed: "✓", failed: "✗", broken: "!", skipped: "–" };
 
+  // Nomi familiari per il pubblico; il tooltip indica il motore di rendering reale.
+  const BROWSERS = {
+    chromium: { name: "Chrome", engine: "motore Chromium (Chrome, Edge)" },
+    firefox: { name: "Firefox", engine: "motore Gecko (Firefox)" },
+    webkit: { name: "Safari", engine: "motore WebKit (Safari)" },
+  };
+
+  // Smoke = controlli essenziali, i primi da guardare; Regression = controlli più approfonditi.
+  const TYPES = {
+    smoke: { name: "Smoke", hint: "Controllo essenziale: verifica che le funzioni principali del sito siano disponibili" },
+    regression: { name: "Regression", hint: "Controllo approfondito: verifica che le funzionalità esistenti continuino a funzionare" },
+  };
+
+  function renderType(type) {
+    const t = TYPES[type];
+    return t ? ` <span class="qlp-type qlp-type-${esc(type)}" title="${esc(t.hint)}">${esc(t.name)}</span>` : "";
+  }
+
+  function renderLegend(s) {
+    if (!s.tests.some((t) => TYPES[t.type])) return "";
+    return `<p class="qlp-legend">
+      ${renderType("smoke")} controlli essenziali, i primi a segnalare un problema
+      <span class="qlp-sep">·</span>
+      ${renderType("regression")} controlli approfonditi sulle singole funzionalità
+    </p>`;
+  }
+
+  function renderBrowsers(t) {
+    if (!t.browsers) return "";
+    return `<span class="qlp-browsers">${Object.keys(BROWSERS)
+      .filter((b) => b in t.browsers)
+      .map((b) => {
+        const st = t.browsers[b];
+        return `<span class="qlp-b qlp-b-${esc(st)}" title="${esc(BROWSERS[b].engine)}: ${st === "passed" ? "superato" : "non superato"}">${esc(BROWSERS[b].name)}</span>`;
+      })
+      .join("")}</span>`;
+  }
+
   /* ---------- Render ---------- */
 
   function render() {
@@ -83,19 +121,28 @@
           <div class="qlp-stat"><span class="qlp-num">${s.successRate}%</span><span class="qlp-label">tasso di successo</span></div>
           <div class="qlp-stat"><span class="qlp-num">${(s.durationMs / 1000).toFixed(1)} s</span><span class="qlp-label">tempo di verifica</span></div>
         </div>
+        ${
+          s.browsers && s.browsers.length > 1
+            ? `<p class="qlp-meta qlp-matrix">${s.checks} controlli, ripetuti su ${s.browsers.length} browser: ${s.browsers
+                .map((b) => esc((BROWSERS[b] || { name: b }).name))
+                .join(", ")}</p>`
+            : ""
+        }
 
+        ${renderLegend(s)}
         <div class="qlp-tests">
           ${Object.entries(byFeature)
             .map(
               ([feature, tests]) => `
             <div class="qlp-group">
-              <h4>${esc(feature)}</h4>
+              <h4>${esc(feature)}${renderType(tests[0].type)}</h4>
               <ul>
                 ${tests
                   .map(
                     (t) => `<li class="qlp-t-${esc(t.status)}">
                       <span class="qlp-icon" aria-label="${esc(t.status)}">${STATUS_ICON[t.status] || "?"}</span>
                       <span class="qlp-name">${esc(t.title)}</span>
+                      ${renderBrowsers(t)}
                       <span class="qlp-dur">${(t.durationMs / 1000).toFixed(1)} s</span>
                     </li>`,
                   )

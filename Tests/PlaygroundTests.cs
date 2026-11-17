@@ -1,20 +1,17 @@
 using System.Text.RegularExpressions;
 using Allure.Net.Commons;
 using Allure.Net.Commons.Attributes;
-using Allure.NUnit;
 using Microsoft.Playwright;
-using Microsoft.Playwright.NUnit;
 
 namespace QualityLab.Tests;
 
 [TestFixture]
-[AllureNUnit]
-[AllureEpic("mattiazanchin.com")]
+[Category("Regression")]
 [AllureFeature("Playground")]
 [AllureSeverity(SeverityLevel.normal)]
-public class PlaygroundTests : PageTest
+public class PlaygroundTests : QualityLabTest
 {
-    private const string PlaygroundUrl = "https://mattiazanchin.com/playground/";
+    private const string PlaygroundUrl = BaseUrl + "/playground/";
 
     [Test]
     [AllureName("La pagina Playground mostra i risultati aggiornati")]

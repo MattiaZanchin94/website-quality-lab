@@ -1,19 +1,16 @@
 using Allure.Net.Commons;
 using Allure.Net.Commons.Attributes;
-using Allure.NUnit;
 using Microsoft.Playwright;
-using Microsoft.Playwright.NUnit;
 
 namespace QualityLab.Tests;
 
 [TestFixture]
-[AllureNUnit]
-[AllureEpic("mattiazanchin.com")]
+[Category("Regression")]
 [AllureFeature("Articoli tecnici")]
 [AllureSeverity(SeverityLevel.normal)]
-public class ArticleTests : PageTest
+public class ArticleTests : QualityLabTest
 {
-    private const string CategoryUrl = "https://mattiazanchin.com/category/articoli-tecnici/";
+    private const string CategoryUrl = BaseUrl + "/category/articoli-tecnici/";
 
     [Test]
     [AllureName("L'ultimo articolo pubblicato si apre con titolo e contenuto")]

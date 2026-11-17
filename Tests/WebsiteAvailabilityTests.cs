@@ -1,18 +1,13 @@
 using Allure.Net.Commons;
 using Allure.Net.Commons.Attributes;
-using Allure.NUnit;
-using Microsoft.Playwright.NUnit;
 
 namespace QualityLab.Tests;
 
 [TestFixture]
-[AllureNUnit]
-[AllureEpic("mattiazanchin.com")]
+[Category("Smoke")]
 [AllureFeature("Disponibilità")]
-public class WebsiteAvailabilityTests : PageTest
+public class WebsiteAvailabilityTests : QualityLabTest
 {
-    private const string BaseUrl = "https://mattiazanchin.com";
-
     [Test]
     [AllureName("Il sito è raggiungibile e si carica correttamente")]
     [AllureSeverity(SeverityLevel.blocker)]

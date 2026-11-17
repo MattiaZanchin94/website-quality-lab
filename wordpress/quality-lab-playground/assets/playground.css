@@ -52,6 +52,31 @@
 .qlp-t-failed .qlp-icon, .qlp-t-broken .qlp-icon { color: var(--qlp-ko); }
 .qlp-dur { color: var(--qlp-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 
+.qlp-matrix { margin: -12px 0 8px; }
+
+.qlp-type {
+  display: inline-block; margin-left: 8px; vertical-align: 1px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.02em; text-transform: none;
+  padding: 1px 8px; border-radius: 4px; cursor: help;
+}
+.qlp-legend .qlp-type { margin-left: 0; }
+.qlp-type-smoke { color: #9a3412; background: #ffedd5; }
+.qlp-type-regression { color: #3730a3; background: #e0e7ff; }
+.qlp-legend { color: var(--qlp-muted); font-size: 13px; margin: 0 0 4px; }
+.qlp-sep { margin: 0 6px; }
+.qlp-browsers { display: inline-flex; gap: 4px; flex-shrink: 0; }
+.qlp-b {
+  font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px;
+  color: var(--qlp-ok); background: var(--qlp-ok-bg);
+}
+.qlp-b-failed, .qlp-b-broken { color: var(--qlp-ko); background: var(--qlp-ko-bg); }
+.qlp-b-skipped { color: var(--qlp-muted); background: #f1f2f4; }
+@media (max-width: 600px) {
+  .qlp-group li { flex-wrap: wrap; }
+  .qlp-name { flex-basis: calc(100% - 30px); }
+  .qlp-browsers { margin-left: 30px; }
+}
+
 .qlp-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-top: 24px; }
 .qlp-run {
   border: 0; border-radius: 8px; padding: 10px 20px; cursor: pointer;

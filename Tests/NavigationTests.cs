@@ -1,33 +1,42 @@
 using System.Text.RegularExpressions;
 using Allure.Net.Commons;
 using Allure.Net.Commons.Attributes;
-using Allure.NUnit;
 using Microsoft.Playwright;
-using Microsoft.Playwright.NUnit;
 
 namespace QualityLab.Tests;
 
 [TestFixture]
-[AllureNUnit]
-[AllureEpic("mattiazanchin.com")]
+[Category("Smoke")]
 [AllureFeature("Navigazione")]
 [AllureSeverity(SeverityLevel.critical)]
-public class NavigationTests : PageTest
+public class NavigationTests : QualityLabTest
 {
-    private const string BaseUrl = "https://mattiazanchin.com";
+    // Le voci del menu principale, nell'ordine in cui compaiono sul sito.
+    // È l'unico punto da aggiornare quando il menu cambia.
+    private static readonly (string Label, string Path)[] MainMenu =
+    [
+        ("Home", "/"),
+        ("Software testing", "/software-testing/"),
+        ("Origini", "/origini/"),
+        ("Carriera", "/carriera/"),
+        ("Articoli tecnici", "/category/articoli-tecnici/"),
+        ("Playground", "/playground/"),
+    ];
 
-    // Ogni [TestCase] diventa un test separato nel report:
-    // stessa logica, dati diversi (data-driven testing).
-    [TestCase("Home", "/")]
-    [TestCase("Software testing", "/software-testing/")]
-    [TestCase("Origini", "/origini/")]
-    [TestCase("Carriera", "/carriera/")]
-    [TestCase("Articoli tecnici", "/category/articoli-tecnici/")]
-    [TestCase("Playground", "/playground/")]
+    // [TestCaseSource] genera un test per ogni voce: stessa logica, dati diversi
+    // (data-driven testing), con i dati presi dall'array invece che da tanti [TestCase].
+    private static IEnumerable<TestCaseData> MenuItems() =>
+        MainMenu.Select(item => new TestCaseData(item.Label, item.Path));
+
+    [TestCaseSource(nameof(MenuItems))]
     public async Task MenuItemOpensExpectedPage(string menuLabel, string expectedPath)
     {
-        // Con [TestCase] il nome dipende dai dati, quindi lo impostiamo a runtime.
+        // Il nome dipende dai dati, quindi lo impostiamo a runtime.
         AllureApi.SetTestName($"La voce di menu «{menuLabel}» porta alla pagina giusta");
+
+        // Posizione nel menu (1 = Home): serve alla pagina Playground per mostrare le voci in quest'ordine.
+        var position = Array.FindIndex(MainMenu, item => item.Label == menuLabel) + 1;
+        AllureApi.AddLabel("order", position.ToString());
 
         await Page.GotoAsync(BaseUrl);
 
