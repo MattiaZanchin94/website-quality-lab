@@ -1,0 +1,33 @@
+using System.Text.RegularExpressions;
+using Microsoft.Playwright;
+using Microsoft.Playwright.NUnit;
+
+namespace QualityLab.Tests;
+
+[TestFixture]
+public class NavigationTests : PageTest
+{
+    private const string BaseUrl = "https://mattiazanchin.com";
+
+    // Ogni [TestCase] diventa un test separato nel report:
+    // stessa logica, dati diversi (data-driven testing).
+    [TestCase("Home", "/")]
+    [TestCase("Software testing", "/software-testing/")]
+    [TestCase("Origini", "/origini/")]
+    [TestCase("Carriera", "/carriera/")]
+    [TestCase("Articoli tecnici", "/category/articoli-tecnici/")]
+    public async Task MenuItemOpensExpectedPage(string menuLabel, string expectedPath)
+    {
+        await Page.GotoAsync(BaseUrl);
+
+        // Il tema ha due menu (desktop e mobile): prendiamo solo il link visibile nell'header.
+        var menuLink = Page.Locator("header")
+            .GetByRole(AriaRole.Link, new() { Name = menuLabel, Exact = true })
+            .Filter(new() { Visible = true });
+
+        await menuLink.ClickAsync();
+
+        await Expect(Page).ToHaveURLAsync(BaseUrl + expectedPath);
+        await Expect(Page).ToHaveTitleAsync(new Regex($"^{Regex.Escape(menuLabel)} - "));
+    }
+}
