@@ -30,6 +30,17 @@
       checksPassed: "controlli superati",
       successRate: "tasso di successo",
       duration: "tempo di verifica",
+      durationAll: "tempo di verifica (browser in parallelo)",
+      chartTitle: "Durata per browser",
+      slowest: "il più lento",
+      chartNote: "I browser vengono controllati contemporaneamente, ognuno su un computer separato: la verifica dura quanto il browser più lento.",
+      howTitle: "Come funziona?",
+      how: [
+        "A ogni verifica GitHub Actions avvia un computer separato per ogni browser, e partono tutti insieme.",
+        "Su ogni computer i controlli vengono eseguiti uno dopo l'altro, sempre nello stesso ordine.",
+        "Per questo il tempo di verifica è quello del browser più lento, non la somma dei tempi.",
+        "La barra è verde se quel browser ha superato tutti i controlli, rossa se qualcuno non è andato a buon fine.",
+      ],
       matrix: (checks, n, names) => `${checks} controlli, ripetuti su ${n} browser: ${names}`,
       engines: { chromium: "motore Chromium (Chrome)", msedge: "Microsoft Edge (motore Chromium)", firefox: "motore Gecko (Firefox)", webkit: "motore WebKit (Safari)" },
       allBrowsers: "Tutti i browser",
@@ -74,6 +85,17 @@
       checksPassed: "checks passed",
       successRate: "success rate",
       duration: "check duration",
+      durationAll: "check time (browsers in parallel)",
+      chartTitle: "Duration per browser",
+      slowest: "the slowest",
+      chartNote: "The browsers are checked at the same time, each on a separate computer: the run lasts as long as the slowest browser.",
+      howTitle: "How does it work?",
+      how: [
+        "For every run, GitHub Actions starts a separate computer for each browser, and they all start together.",
+        "On each computer the checks run one after another, always in the same order.",
+        "That's why the check time is the one of the slowest browser, not the sum of the times.",
+        "A bar is green if that browser passed every check, red if any check did not pass.",
+      ],
       matrix: (checks, n, names) => `${checks} checks, repeated on ${n} browsers: ${names}`,
       engines: { chromium: "Chromium engine (Chrome)", msedge: "Microsoft Edge (Chromium engine)", firefox: "Gecko engine (Firefox)", webkit: "WebKit engine (Safari)" },
       allBrowsers: "All browsers",
@@ -148,6 +170,50 @@
 
   const seconds = (ms) => (ms / 1000).toLocaleString(LANG, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " s";
 
+  // Tempo totale in minuti e secondi, es. "2 min 14 s".
+  function minutes(ms) {
+    const total = Math.round(ms / 1000);
+    return `${Math.floor(total / 60)} min ${String(total % 60).padStart(2, "0")} s`;
+  }
+
+  // I browser girano in parallelo: nella vista "tutti i browser" il tempo è quello del più lento
+  // (i summary più vecchi non hanno slowestDurationMs: lo ricaviamo da "runs").
+  function totalDuration(s) {
+    if (s.slowestDurationMs) return s.slowestDurationMs;
+    const runs = Object.values(s.runs || {});
+    return runs.length ? Math.max(...runs.map((r) => r.durationMs || 0)) : s.durationMs;
+  }
+
+  // Grafico a barre: una barra per browser, tutte da zero, lunghezza proporzionale alla durata.
+  function renderChart(s) {
+    const rows = Object.keys(BROWSER_NAMES)
+      .filter((b) => s.runs && s.runs[b] && s.runs[b].durationMs)
+      .map((b) => ({
+        b,
+        ms: s.runs[b].durationMs,
+        ok: s.tests.every((t) => !t.browsers || !(b in t.browsers) || t.browsers[b] === "passed"),
+      }));
+    if (rows.length < 2) return "";
+    const max = Math.max(...rows.map((r) => r.ms));
+    return `<div class="qlp-chart">
+      <h4>${esc(T.chartTitle)}</h4>
+      ${rows
+        .map(
+          (r) => `<div class="qlp-bar-row">
+            <span class="qlp-bar-name">${BROWSER_NAMES[r.b]}</span>
+            <span class="qlp-bar-track"><span class="qlp-bar ${r.ok ? "qlp-ok" : "qlp-ko"}" style="width:${Math.max(4, (r.ms / max) * 100).toFixed(1)}%"></span></span>
+            <span class="qlp-bar-value">${minutes(r.ms)}${r.ms === max ? ` · <em>${esc(T.slowest)}</em>` : ""}</span>
+          </div>`,
+        )
+        .join("")}
+      <p class="qlp-chart-note">${esc(T.chartNote)}</p>
+      <details class="qlp-how">
+        <summary>${esc(T.howTitle)}</summary>
+        <ul>${T.how.map((line) => `<li>${esc(line)}</li>`).join("")}</ul>
+      </details>
+    </div>`;
+  }
+
   const STATUS_ICON = { passed: "✓", failed: "✗", broken: "!", skipped: "–" };
 
   // Nomi familiari per il pubblico; il tooltip indica il motore di rendering reale.
@@ -191,7 +257,7 @@
         passed: s.passed,
         total: s.total,
         successRate: s.successRate,
-        durationMs: s.durationMs,
+        durationMs: totalDuration(s),
         startedAt: s.startedAt,
         trigger: s.trigger,
         status: s.status,
@@ -260,7 +326,7 @@
         <div class="qlp-stats">
           <div class="qlp-stat"><span class="qlp-num">${d.passed}/${d.total}</span><span class="qlp-label">${esc(T.checksPassed)}</span></div>
           <div class="qlp-stat"><span class="qlp-num">${d.successRate.toLocaleString(LANG)}%</span><span class="qlp-label">${esc(T.successRate)}</span></div>
-          <div class="qlp-stat"><span class="qlp-num">${seconds(d.durationMs)}</span><span class="qlp-label">${esc(T.duration)}</span></div>
+          <div class="qlp-stat"><span class="qlp-num">${minutes(d.durationMs)}</span><span class="qlp-label">${esc(state.view === "all" ? T.durationAll : T.duration)}</span></div>
         </div>
         ${
           state.view === "all" && s.browsers && s.browsers.length > 1
@@ -270,6 +336,7 @@
             : ""
         }
 
+        ${state.view === "all" ? renderChart(s) : ""}
         ${renderLegend(s)}
         <div class="qlp-tests">
           ${Object.entries(byFeature)

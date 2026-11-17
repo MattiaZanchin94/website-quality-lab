@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Quality Lab Playground
  * Description: Mostra i risultati dei test E2E del sito e permette ai visitatori di avviarli. Shortcode: [quality_lab_playground]
- * Version:     1.3.0
+ * Version:     1.3.1
  * Author:      Mattia Zanchin
  * License:     MIT
  *
@@ -12,7 +12,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const QLP_VERSION     = '1.3.0';
+const QLP_VERSION     = '1.3.1';
 const QLP_REPO        = 'Zancus/website-quality-lab';
 const QLP_WORKFLOW    = 'e2e-tests.yml';
 const QLP_PAGES_URL   = 'https://zancus.github.io/website-quality-lab';

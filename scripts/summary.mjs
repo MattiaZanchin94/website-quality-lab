@@ -52,7 +52,8 @@ for (const r of results) {
 const runUrl = env.GITHUB_RUN_ID ? `${env.GITHUB_SERVER_URL}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}` : null;
 const runInfo = (rs) => ({
   startedAt: new Date(Math.min(...rs.map((r) => r.start))).toISOString(),
-  durationMs: Math.max(...rs.map((r) => r.stop)) - Math.min(...rs.map((r) => r.start)),
+  // Dentro un browser i test sono sequenziali: la durata è la somma dei singoli test.
+  durationMs: rs.reduce((sum, r) => sum + (r.stop - r.start), 0),
   trigger: env.RUN_TRIGGER ?? "local",
   commit: env.GITHUB_SHA?.slice(0, 7) ?? null,
   runUrl,
@@ -109,6 +110,14 @@ const total = statuses.length;
 const passed = count("passed");
 const current = runInfo(results);
 
+function slowest(runsByBrowser) {
+  const [browser, run] = Object.entries(runsByBrowser).reduce(
+    (max, entry) => ((entry[1].durationMs ?? 0) > (max[1].durationMs ?? 0) ? entry : max),
+    [null, { durationMs: 0 }],
+  );
+  return { slowestBrowser: browser, slowestDurationMs: run.durationMs ?? 0 };
+}
+
 const summary = {
   status: total > 0 && passed === total ? "passed" : "failed",
   total,
@@ -120,6 +129,9 @@ const summary = {
   checks: tests.length,
   browsers,
   ranNow, // i browser eseguiti in quest'ultimo run
+  // I browser girano in parallelo, ognuno sulla sua macchina: la verifica dura quanto il più lento.
+  // Usiamo la durata di ogni browser (non gli orari) perché i browser possono venire da run diversi.
+  ...slowest(runs),
   // Dati dell'ultimo run (per tutti i browser vedi "runs").
   startedAt: current.startedAt,
   durationMs: current.durationMs,

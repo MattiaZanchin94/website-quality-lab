@@ -81,7 +81,7 @@ jobs:
           $CHANNEL_ARGS
 
       - name: Upload Allure results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: allure-results-${{ matrix.browser }}
           path: bin/Release/net10.0/allure-results
@@ -143,7 +143,7 @@ jobs:
 
       # Il report Allure completo NON viene pubblicato: resta un artifact dell'esecuzione.
       - name: Keep Allure report as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: allure-report
           path: allure-report

@@ -32,6 +32,19 @@ flowchart LR
 3. A publish job merges the results of the browsers and deploys a compact `summary.json` to **GitHub Pages**.
 4. A small **WordPress plugin** shows that summary on the Playground page and lets visitors start a run, through a server-side proxy that keeps the GitHub token private and allows at most one run every 10 minutes.
 
+## Parallel execution
+
+Parallelism works on two levels; this project currently uses the first one.
+
+| Level | Where | Status |
+|---|---|---|
+| **1. Across machines** | GitHub Actions starts one job per browser (`strategy.matrix`): four isolated machines that run at the same time | ✅ in use |
+| **2. Within a run** | NUnit runs several tests at the same time on one machine (`[Parallelizable]`, `[LevelOfParallelism]`) | next step |
+
+On each machine the tests run **sequentially**, so a run lasts as long as the **slowest browser**, not the sum of the four. The Playground page shows this as a per-browser duration chart.
+
+Level 2 needs tests that share no state and don't depend on each other's order. These tests already qualify (they only read the site), but running many of them at once against the live site also has to account for the hosting provider's anti-bot protection.
+
 ## What is tested
 
 Each check runs on all four browsers (12 checks × 4 browsers = 48 runs).
