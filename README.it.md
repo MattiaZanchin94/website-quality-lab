@@ -47,19 +47,22 @@ Il livello 2 richiede test che non condividano stato e non dipendano dall'ordine
 
 ## Cosa viene verificato
 
-Ogni controllo gira su tutti e quattro i browser (12 controlli × 4 browser = 48 esecuzioni).
+Ogni controllo gira su tutti e quattro i browser (13 controlli × 4 browser = 52 esecuzioni).
 
-| Tipo | Area | Controllo | Severità |
+| Tipo | Area | Controllo | Priorità |
 |---|---|---|---|
-| Smoke | Disponibilità | Il sito è raggiungibile e si carica correttamente | blocker |
-| Smoke | Navigazione | Ogni voce del menu principale porta alla pagina giusta (6 voci, nell'ordine del menu) | critical |
-| Regression | Articoli tecnici | L'ultimo articolo pubblicato si apre con titolo e contenuto | normal |
-| Regression | Playground | La pagina Playground mostra i risultati aggiornati | normal |
-| Regression | Playground | La pagina Playground è disponibile anche in inglese | normal |
-| Regression | Playground | Si possono vedere i risultati di un singolo browser | normal |
-| Regression | Playground | I visitatori possono avviare i controlli (il pulsante è disponibile) | normal |
+| Smoke | Disponibilità | Il sito è raggiungibile e si carica correttamente | Blocker |
+| Smoke | Navigazione | Ogni voce del menu principale porta alla pagina giusta (6 voci, nell'ordine del menu) | Blocker |
+| Regression | Playground | I visitatori possono avviare i controlli (il pulsante è disponibile) | Blocker |
+| Regression | Playground | La pagina Playground mostra i risultati aggiornati | Blocker |
+| Regression | Articoli tecnici | L'ultimo articolo pubblicato si apre con titolo e contenuto | Major |
+| Regression | Playground | La pagina Playground è disponibile anche in inglese | Major |
+| Regression | Playground | Si possono vedere i risultati di un singolo browser | Major |
+| Regression | Playground | Si possono filtrare i controlli per priorità | Major |
 
 I controlli **smoke** coprono l'essenziale e sono i primi a segnalare un problema; quelli **regression** approfondiscono le singole funzionalità. Sono categorie NUnit, quindi si possono eseguire separatamente.
+
+**Blocker** significa che, se il controllo fallisce, il sito o una sua funzione principale non è utilizzabile; **Major** significa importante, ma un errore non blocca l'uso del sito. Allure non ha un livello "major": Major corrisponde alla severità `normal` di Allure, mostrata come Major nella pagina Playground.
 
 ## Stack tecnologico
 

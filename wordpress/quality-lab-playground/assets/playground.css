@@ -58,11 +58,14 @@
 
 .qlp-group h4 { margin: 16px 0 6px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--qlp-muted); }
 .qlp-group ul { list-style: none; margin: 0; padding: 0; }
+/* Ogni controllo è una griglia: icona | nome | browser | durata (la durata sempre a destra). */
 .qlp-group li {
-  display: flex; align-items: center; gap: 10px;
+  display: grid; grid-template-columns: 20px minmax(0, 1fr) auto auto; align-items: center; column-gap: 10px; row-gap: 4px;
   padding: 6px 0; border-bottom: 1px dashed var(--qlp-border);
 }
-.qlp-name { flex: 1; font-size: 15px; overflow-wrap: anywhere; }
+.qlp-name { grid-column: 2; font-size: 15px; overflow-wrap: anywhere; }
+.qlp-browsers { grid-column: 3; }
+.qlp-dur { grid-column: 4; grid-row: 1; text-align: right; white-space: nowrap; }
 .qlp-icon { width: 20px; text-align: center; font-weight: 700; }
 .qlp-t-passed .qlp-icon { color: var(--qlp-ok); }
 .qlp-t-failed .qlp-icon, .qlp-t-broken .qlp-icon { color: var(--qlp-ko); }
@@ -84,8 +87,13 @@
 .qlp-bar-name { font-weight: 600; }
 .qlp-bar-track { height: 10px; background: #f1f2f4; border-radius: 999px; overflow: hidden; }
 .qlp-bar { display: block; height: 100%; border-radius: 999px; }
-.qlp-bar.qlp-ok { background: var(--qlp-ok); }
-.qlp-bar.qlp-ko { background: var(--qlp-ko); }
+/* Le barre mostrano solo il tempo: colore neutro, più scuro per il browser più lento.
+   L'esito dei controlli è nell'etichetta accanto (es. "✓ 12/12"). */
+.qlp-bar { background: #93b4f5; }
+.qlp-bar.qlp-bar-slowest { background: var(--qlp-accent); }
+.qlp-res { display: inline-block; margin-right: 6px; padding: 0 6px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.qlp-res.qlp-ok { color: var(--qlp-ok); background: var(--qlp-ok-bg); }
+.qlp-res.qlp-ko { color: var(--qlp-ko); background: var(--qlp-ko-bg); }
 .qlp-bar-value { color: var(--qlp-muted); font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .qlp-bar-value em { font-style: normal; font-weight: 600; color: inherit; }
 .qlp-chart-note { color: var(--qlp-muted); font-size: 13px; margin: 10px 0 4px; }
@@ -107,8 +115,8 @@
 .qlp-modal form { display: flex; justify-content: flex-end; margin: 0; }
 @media (max-width: 600px) {
   /* Su schermi stretti il valore va sotto la barra, così la barra resta leggibile. */
-  .qlp-bar-row { grid-template-columns: 64px 1fr; row-gap: 2px; margin: 8px 0; }
-  .qlp-bar-value { grid-column: 2; }
+  .qlp-bar-row { grid-template-columns: 64px minmax(0, 1fr); row-gap: 2px; margin: 8px 0; }
+  .qlp-bar-value { grid-column: 2; white-space: normal; }
   .qlp-num { font-size: 24px; white-space: nowrap; }
   .qlp-stat:last-child { grid-column: 1 / -1; }
 }
@@ -118,10 +126,33 @@
   font-size: 11px; font-weight: 700; letter-spacing: 0.02em; text-transform: none;
   padding: 1px 8px; border-radius: 4px; cursor: help;
 }
-.qlp-legend .qlp-type { margin-left: 0; }
+.qlp-legend .qlp-type, .qlp-legend .qlp-prio { margin-left: 0; }
 .qlp-type-smoke { color: #9a3412; background: #ffedd5; }
 .qlp-type-regression { color: #3730a3; background: #e0e7ff; }
-.qlp-legend { color: var(--qlp-muted); font-size: 13px; margin: 0 0 4px; }
+.qlp-legend {
+  list-style: none; margin: 0 0 4px; padding: 0; color: var(--qlp-muted); font-size: 13px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px;
+}
+.qlp-legend li { display: flex; align-items: baseline; gap: 8px; }
+.qlp-legend li > span:first-child { flex-shrink: 0; min-width: 84px; text-align: center; }
+@media (max-width: 600px) { .qlp-legend { grid-template-columns: 1fr; } }
+
+/* Priorità: Blocker (rosso scuro) e Major (grigio-blu), su ogni controllo e nella legenda. */
+.qlp-prio {
+  display: inline-block; vertical-align: 1px; margin-left: 4px; white-space: nowrap; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 4px; cursor: help;
+}
+.qlp-prio-blocker { color: #9f1239; background: #ffe4e6; }
+.qlp-prio-major { color: #334155; background: #e2e8f0; }
+
+/* Filtro per priorità */
+.qlp-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 12px 0 4px; font-size: 13px; }
+.qlp-filter-label { color: var(--qlp-muted); font-weight: 600; margin-right: 2px; }
+.qlp-filter-btn {
+  border: 1px solid var(--qlp-border); background: #fff; border-radius: 999px;
+  padding: 3px 12px; cursor: pointer; font-size: 13px; font-weight: 600; color: inherit;
+}
+.qlp-filter-btn[aria-pressed="true"] { background: #e8eefc; border-color: var(--qlp-accent); color: var(--qlp-accent); }
+.qlp-count { color: var(--qlp-muted); font-weight: 400; margin-left: 2px; }
 .qlp-sep { margin: 0 6px; }
 .qlp-browsers { display: inline-flex; gap: 4px; flex-shrink: 0; }
 .qlp-b {
@@ -131,9 +162,11 @@
 .qlp-b-failed, .qlp-b-broken { color: var(--qlp-ko); background: var(--qlp-ko-bg); }
 .qlp-b-skipped { color: var(--qlp-muted); background: #f1f2f4; }
 @media (max-width: 600px) {
-  .qlp-group li { flex-wrap: wrap; }
-  .qlp-name { flex-basis: calc(100% - 30px); }
-  .qlp-browsers { margin-left: 30px; }
+  /* Su mobile: nome e durata sulla prima riga, i browser sotto il nome. */
+  .qlp-group li { grid-template-columns: 20px minmax(0, 1fr) auto; align-items: start; }
+  .qlp-icon { grid-row: 1; line-height: 1.5; }
+  .qlp-dur { grid-column: 3; grid-row: 1; line-height: 1.9; }
+  .qlp-browsers { grid-column: 2 / 4; grid-row: 2; flex-wrap: wrap; }
 }
 
 .qlp-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin: 0 0 20px; }

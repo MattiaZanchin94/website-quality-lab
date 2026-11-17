@@ -8,7 +8,7 @@ namespace QualityLab.Tests;
 [Category("Regression")]
 [AllureFeature("Articoli tecnici")]
 [AllureLabel(FeatureEn, "Technical articles")]
-[AllureSeverity(SeverityLevel.normal)]
+[AllureSeverity(Major)]
 public class ArticleTests : QualityLabTest
 {
     private const string CategoryUrl = BaseUrl + "/category/articoli-tecnici/";

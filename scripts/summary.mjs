@@ -21,6 +21,7 @@ const label = (r, name) => r.labels?.find((l) => l.name === name)?.value ?? null
 
 // Ogni controllo gira su più browser: raggruppiamo le esecuzioni per nome del controllo.
 const ALL_BROWSERS = ["chromium", "msedge", "firefox", "webkit"];
+const PRIORITY_OF_SEVERITY = { blocker: "blocker", critical: "blocker", normal: "major", minor: "minor", trivial: "minor" };
 const SEVERITY_OF_STATUS = { passed: 0, skipped: 1, broken: 2, failed: 3 };
 const env = process.env;
 const byTitle = new Map();
@@ -35,6 +36,8 @@ for (const r of results) {
     // Testi per la versione inglese del sito (label name_en / feature_en impostate nei test C#).
     en: { title: label(r, "name_en"), feature: label(r, "feature_en") },
     severity: label(r, "severity"),
+    // Priorità mostrata sul sito: Blocker oppure Major (il "normal" di Allure, vedi QualityLabTest).
+    priority: PRIORITY_OF_SEVERITY[label(r, "severity")] ?? "major",
     // Posizione facoltativa (label "order"), es. l'ordine delle voci nel menu.
     order: Number(label(r, "order")) || null,
     // [Category("Smoke")] / [Category("Regression")] in C# diventano tag Allure.

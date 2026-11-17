@@ -9,7 +9,7 @@ namespace QualityLab.Tests;
 [Category("Smoke")]
 [AllureFeature("Navigazione")]
 [AllureLabel(FeatureEn, "Navigation")]
-[AllureSeverity(SeverityLevel.critical)]
+[AllureSeverity(Blocker)]
 public class NavigationTests : QualityLabTest
 {
     // Le voci del menu principale, nell'ordine in cui compaiono sul sito,

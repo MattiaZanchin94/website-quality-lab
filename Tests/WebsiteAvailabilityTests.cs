@@ -13,7 +13,7 @@ public class WebsiteAvailabilityTests : QualityLabTest
     [Test]
     [AllureName("Il sito è raggiungibile e si carica correttamente")]
     [AllureLabel(NameEn, "The site is reachable and loads correctly")]
-    [AllureSeverity(SeverityLevel.blocker)]
+    [AllureSeverity(Blocker)]
     [AllureDescription("La home page risponde senza errori e mostra il sito vero.")]
     public async Task WebsiteIsOnline()
     {

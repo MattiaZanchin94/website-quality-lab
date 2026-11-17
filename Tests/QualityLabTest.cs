@@ -23,6 +23,11 @@ public abstract class QualityLabTest : PageTest
     protected const string NameEn = "name_en";
     protected const string FeatureEn = "feature_en";
 
+    // Priorità dei controlli. Allure non ha un livello "major": usiamo il suo "normal"
+    // e la pagina Playground lo mostra come Major.
+    protected const SeverityLevel Blocker = SeverityLevel.blocker; // se fallisce, il sito ha un problema serio
+    protected const SeverityLevel Major = SeverityLevel.normal;    // importante, ma non blocca l'uso del sito
+
     /// <summary>Nome inglese impostato a runtime, per i test generati dai dati.</summary>
     protected static void SetEnglishName(string name) => AllureApi.AddLabel(NameEn, name);
 

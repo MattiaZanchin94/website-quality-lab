@@ -47,19 +47,22 @@ Level 2 needs tests that share no state and don't depend on each other's order. 
 
 ## What is tested
 
-Each check runs on all four browsers (12 checks × 4 browsers = 48 runs).
+Each check runs on all four browsers (13 checks × 4 browsers = 52 runs).
 
-| Type | Area | Check | Severity |
+| Type | Area | Check | Priority |
 |---|---|---|---|
-| Smoke | Availability | The site is reachable and loads correctly | blocker |
-| Smoke | Navigation | Each main menu item opens the right page (6 items, in menu order) | critical |
-| Regression | Technical articles | The latest article opens with matching title and content | normal |
-| Regression | Playground | The Playground page shows up-to-date results | normal |
-| Regression | Playground | The Playground page is also available in English | normal |
-| Regression | Playground | Results can be viewed for a single browser | normal |
-| Regression | Playground | Visitors can start a run (the button is available) | normal |
+| Smoke | Availability | The site is reachable and loads correctly | Blocker |
+| Smoke | Navigation | Each main menu item opens the right page (6 items, in menu order) | Blocker |
+| Regression | Playground | Visitors can start a run (the button is available) | Blocker |
+| Regression | Playground | The Playground page shows up-to-date results | Blocker |
+| Regression | Technical articles | The latest article opens with matching title and content | Major |
+| Regression | Playground | The Playground page is also available in English | Major |
+| Regression | Playground | Results can be viewed for a single browser | Major |
+| Regression | Playground | Checks can be filtered by priority | Major |
 
 **Smoke** checks cover the essentials and are the first to flag a problem; **regression** checks go deeper into single features. Both are NUnit categories, so they can be run separately.
+
+**Blocker** means that if the check fails, the site or one of its main functions can't be used; **Major** means important, but a failure doesn't block the site. Allure has no "major" level, so Major is Allure's `normal` severity, displayed as Major on the Playground page.
 
 ## Tech stack
 

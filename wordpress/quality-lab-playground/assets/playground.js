@@ -40,7 +40,7 @@
         "A ogni verifica GitHub Actions avvia un computer separato per ogni browser, e partono tutti insieme.",
         "Su ogni computer i controlli vengono eseguiti uno dopo l'altro, sempre nello stesso ordine.",
         "Per questo il tempo di verifica è quello del browser più lento, non la somma dei tempi.",
-        "La barra è verde se quel browser ha superato tutti i controlli, rossa se qualcuno non è andato a buon fine.",
+        "La lunghezza della barra indica solo il tempo; accanto a ogni browser trovi quanti controlli ha superato.",
       ],
       matrix: (checks, n, names) => `${checks} controlli, ripetuti su ${n} browser: ${names}`,
       engines: { chromium: "motore Chromium (Chrome)", msedge: "Microsoft Edge (motore Chromium)", firefox: "motore Gecko (Firefox)", webkit: "motore WebKit (Safari)" },
@@ -55,6 +55,12 @@
       types: {
         smoke: ["Controllo essenziale: verifica che le funzioni principali del sito siano disponibili", "controlli essenziali, i primi a segnalare un problema"],
         regression: ["Controllo approfondito: verifica che le funzionalità esistenti continuino a funzionare", "controlli approfonditi sulle singole funzionalità"],
+      },
+      priorityFilter: "Priorità",
+      allPriorities: "Tutte",
+      priorities: {
+        blocker: ["Se fallisce, il sito o una sua funzione principale non è utilizzabile", "se fallisce, il sito ha un problema serio"],
+        major: ["Importante, ma un errore non impedisce di usare il sito", "importante, ma non blocca l'uso del sito"],
       },
       other: "Altro",
       runNow: "▶ Avvia i controlli ora",
@@ -98,7 +104,7 @@
         "For every run, GitHub Actions starts a separate computer for each browser, and they all start together.",
         "On each computer the checks run one after another, always in the same order.",
         "That's why the check time is the one of the slowest browser, not the sum of the times.",
-        "A bar is green if that browser passed every check, red if any check did not pass.",
+        "A bar's length shows only the time; next to each browser you'll find how many checks it passed.",
       ],
       matrix: (checks, n, names) => `${checks} checks, repeated on ${n} browsers: ${names}`,
       engines: { chromium: "Chromium engine (Chrome)", msedge: "Microsoft Edge (Chromium engine)", firefox: "Gecko engine (Firefox)", webkit: "WebKit engine (Safari)" },
@@ -113,6 +119,12 @@
       types: {
         smoke: ["Essential check: verifies that the site's main functions are available", "essential checks, the first to flag a problem"],
         regression: ["In-depth check: verifies that existing features keep working", "in-depth checks on individual features"],
+      },
+      priorityFilter: "Priority",
+      allPriorities: "All",
+      priorities: {
+        blocker: ["If it fails, the site or one of its main functions can't be used", "if it fails, the site has a serious problem"],
+        major: ["Important, but a failure doesn't stop people from using the site", "important, but doesn't block the site"],
       },
       other: "Other",
       runNow: "▶ Run the checks now",
@@ -139,6 +151,7 @@
     status: null,
     phase: "idle", // idle | starting | queued | in_progress | refreshing
     view: "all", // scheda selezionata: "all" oppure un browser (chromium, msedge, firefox, webkit)
+    priority: "all", // filtro dei controlli: "all", "blocker" oppure "major"
     message: null,
     justUpdated: false,
   };
@@ -194,11 +207,16 @@
   function renderChart(s) {
     const rows = Object.keys(BROWSER_NAMES)
       .filter((b) => s.runs && s.runs[b] && s.runs[b].durationMs)
-      .map((b) => ({
-        b,
-        ms: s.runs[b].durationMs,
-        ok: s.tests.every((t) => !t.browsers || !(b in t.browsers) || isOk(t.browsers[b])),
-      }));
+      .map((b) => {
+        const statuses = s.tests.filter((t) => t.browsers && b in t.browsers).map((t) => t.browsers[b]);
+        return {
+          b,
+          ms: s.runs[b].durationMs,
+          passed: statuses.filter((st) => st === "passed").length,
+          verified: statuses.filter((st) => st !== "skipped").length,
+          ok: statuses.every(isOk),
+        };
+      });
     if (rows.length < 2) return "";
     const max = Math.max(...rows.map((r) => r.ms));
     return `<div class="qlp-chart">
@@ -207,8 +225,11 @@
         .map(
           (r) => `<div class="qlp-bar-row">
             <span class="qlp-bar-name">${BROWSER_NAMES[r.b]}</span>
-            <span class="qlp-bar-track"><span class="qlp-bar ${r.ok ? "qlp-ok" : "qlp-ko"}" style="width:${Math.max(4, (r.ms / max) * 100).toFixed(1)}%"></span></span>
-            <span class="qlp-bar-value">${minutes(r.ms)}${r.ms === max ? ` · <em>${esc(T.slowest)}</em>` : ""}</span>
+            <span class="qlp-bar-track"><span class="qlp-bar ${r.ms === max ? "qlp-bar-slowest" : ""}" style="width:${Math.max(4, (r.ms / max) * 100).toFixed(1)}%"></span></span>
+            <span class="qlp-bar-value">
+              <span class="qlp-res ${r.ok ? "qlp-ok" : "qlp-ko"}">${r.ok ? "✓" : "✗"} ${r.passed}/${r.verified}</span>
+              ${minutes(r.ms)}${r.ms === max ? ` · <em>${esc(T.slowest)}</em>` : ""}
+            </span>
           </div>`,
         )
         .join("")}
@@ -231,14 +252,41 @@
     return ` <span class="qlp-type qlp-type-${esc(type)}" title="${esc(T.types[type][0])}">${TYPE_NAMES[type]}</span>`;
   }
 
-  function renderLegend(s) {
-    if (!s.tests.some((t) => TYPE_NAMES[t.type])) return "";
-    return `<p class="qlp-legend">
-      ${renderType("smoke")} ${esc(T.types.smoke[1])}
-      <span class="qlp-sep">·</span>
-      ${renderType("regression")} ${esc(T.types.regression[1])}
-    </p>`;
+  const PRIORITY_NAMES = { blocker: "Blocker", major: "Major" };
+  const priorityOf = (t) => (t.priority === "blocker" ? "blocker" : "major");
+
+  function renderPriority(priority) {
+    return `<span class="qlp-prio qlp-prio-${priority}" title="${esc(T.priorities[priority][0])}">${PRIORITY_NAMES[priority]}</span>`;
   }
+
+  // Filtro per priorità: Tutte / Blocker / Major, con il numero di controlli di ciascuna.
+  function renderPriorityFilter(tests) {
+    if (!tests.some((t) => t.priority)) return "";
+    const options = [["all", T.allPriorities], ["blocker", PRIORITY_NAMES.blocker], ["major", PRIORITY_NAMES.major]];
+    return `<div class="qlp-filter" role="group" aria-label="${esc(T.priorityFilter)}">
+      <span class="qlp-filter-label">${esc(T.priorityFilter)}:</span>
+      ${options
+        .map(([key, name]) => {
+          const n = key === "all" ? tests.length : tests.filter((t) => priorityOf(t) === key).length;
+          return `<button type="button" class="qlp-filter-btn" data-priority="${key}" aria-pressed="${state.priority === key}">${esc(name)} <span class="qlp-count">${n}</span></button>`;
+        })
+        .join("")}
+    </div>`;
+  }
+
+  // Legenda come elenco: un tipo o una priorità per riga, con la sua spiegazione.
+  function renderLegend(s) {
+    const items = [];
+    if (s.tests.some((t) => TYPE_NAMES[t.type])) {
+      items.push([renderType("smoke"), T.types.smoke[1]], [renderType("regression"), T.types.regression[1]]);
+    }
+    if (s.tests.some((t) => t.priority)) {
+      items.push([renderPriority("blocker"), T.priorities.blocker[1]], [renderPriority("major"), T.priorities.major[1]]);
+    }
+    if (!items.length) return "";
+    return `<ul class="qlp-legend">${items.map(([chip, text]) => `<li>${chip}<span>${esc(text)}</span></li>`).join("")}</ul>`;
+  }
+
 
   function renderBrowsers(t) {
     if (!t.browsers) return "";
@@ -343,7 +391,8 @@
     const d = viewData(s);
     const ok = d.status === "passed";
     const byFeature = {};
-    for (const t of d.tests) (byFeature[featureOf(t)] ||= []).push(t);
+    const listed = state.priority === "all" ? d.tests : d.tests.filter((t) => priorityOf(t) === state.priority);
+    for (const t of listed) (byFeature[featureOf(t)] ||= []).push(t);
 
     const body = d.tests.length
       ? `
@@ -370,6 +419,7 @@
 
         ${state.view === "all" ? renderChart(s) : ""}
         ${renderLegend(s)}
+        ${renderPriorityFilter(d.tests)}
         <div class="qlp-tests">
           ${Object.entries(byFeature)
             .map(
@@ -382,7 +432,7 @@
                     const { st, ms } = renderStatus(t);
                     return `<li class="qlp-t-${esc(st)}">
                       <span class="qlp-icon" aria-label="${esc(st)}">${STATUS_ICON[st] || "?"}</span>
-                      <span class="qlp-name">${esc(titleOf(t))}</span>
+                      <span class="qlp-name">${esc(titleOf(t))}${t.priority ? ` ${renderPriority(priorityOf(t))}` : ""}</span>
                       ${state.view === "all" ? renderBrowsers(t) : ""}
                       <span class="qlp-dur">${seconds(ms)}</span>
                     </li>`;
@@ -410,6 +460,12 @@
     if (btn) btn.addEventListener("click", startRun);
     const how = root.querySelector(".qlp-how-link");
     if (how) how.addEventListener("click", () => howDialog().showModal());
+    root.querySelectorAll(".qlp-filter-btn").forEach((b) =>
+      b.addEventListener("click", () => {
+        state.priority = b.dataset.priority;
+        render();
+      }),
+    );
     root.querySelectorAll(".qlp-tab").forEach((tab) =>
       tab.addEventListener("click", () => {
         state.view = tab.dataset.view;

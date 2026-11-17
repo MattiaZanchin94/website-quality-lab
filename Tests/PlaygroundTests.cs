@@ -9,7 +9,6 @@ namespace QualityLab.Tests;
 [Category("Regression")]
 [AllureFeature("Playground")]
 [AllureLabel(FeatureEn, "Playground")]
-[AllureSeverity(SeverityLevel.normal)]
 public class PlaygroundTests : QualityLabTest
 {
     private const string PlaygroundUrl = BaseUrl + "/playground/";
@@ -18,6 +17,7 @@ public class PlaygroundTests : QualityLabTest
     [AllureName("La pagina Playground mostra i risultati aggiornati")]
     [AllureLabel(NameEn, "The Playground page shows up-to-date results")]
     [AllureDescription("La pagina Playground carica e mostra i risultati dell'ultima esecuzione dei test.")]
+    [AllureSeverity(Blocker)]
     public async Task PlaygroundShowsLatestResults()
     {
         await OpenAsync(PlaygroundUrl);
@@ -38,6 +38,7 @@ public class PlaygroundTests : QualityLabTest
     [AllureName("La pagina Playground è disponibile anche in inglese")]
     [AllureLabel(NameEn, "The Playground page is also available in English")]
     [AllureDescription("Nella versione /en/ del sito, stato, statistiche e nomi dei controlli sono in inglese.")]
+    [AllureSeverity(Major)]
     public async Task PlaygroundIsTranslatedToEnglish()
     {
         await OpenAsync(BaseUrl + "/en/playground/");
@@ -56,6 +57,7 @@ public class PlaygroundTests : QualityLabTest
     [AllureName("Si possono vedere i risultati di un singolo browser")]
     [AllureLabel(NameEn, "Results can be viewed for a single browser")]
     [AllureDescription("Selezionando la scheda di un browser, la pagina mostra solo i risultati di quel browser.")]
+    [AllureSeverity(Major)]
     public async Task BrowserTabShowsSingleBrowserResults()
     {
         await OpenAsync(PlaygroundUrl);
@@ -75,9 +77,29 @@ public class PlaygroundTests : QualityLabTest
     }
 
     [Test]
+    [AllureName("Si possono filtrare i controlli per priorità")]
+    [AllureLabel(NameEn, "Checks can be filtered by priority")]
+    [AllureDescription("Con il filtro \"Blocker\" la pagina mostra solo i controlli Blocker.")]
+    [AllureSeverity(Major)]
+    public async Task PriorityFilterShowsOnlySelectedChecks()
+    {
+        await OpenAsync(PlaygroundUrl);
+
+        // Il nome del pulsante contiene anche il conteggio, es. "Blocker 9": cerchiamo quello che inizia con "Blocker".
+        var blockerFilter = Page.Locator(".qlp-filter").GetByRole(AriaRole.Button, new() { NameRegex = new Regex("^Blocker") });
+        await blockerFilter.ClickAsync(new() { Timeout = 15_000 });
+
+        await Expect(blockerFilter).ToHaveAttributeAsync("aria-pressed", "true");
+        var list = Page.Locator(".qlp-tests");
+        await Expect(list.Locator(".qlp-prio-blocker")).Not.ToHaveCountAsync(0);
+        await Expect(list.Locator(".qlp-prio-major")).ToHaveCountAsync(0);
+    }
+
+    [Test]
     [AllureName("I visitatori possono avviare i controlli")]
     [AllureLabel(NameEn, "Visitors can start the checks")]
     [AllureDescription("Il pulsante per i visitatori è presente: se manca, il token GitHub in WordPress non è configurato o è scaduto.")]
+    [AllureSeverity(Blocker)]
     public async Task RunButtonIsAvailable()
     {
         await OpenAsync(PlaygroundUrl);
