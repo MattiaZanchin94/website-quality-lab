@@ -63,10 +63,15 @@ jobs:
 
       # continue-on-error: anche se un test fallisce vogliamo pubblicare il report.
       # Lo stato reale del job viene impostato nell'ultimo step.
+      # Il logger GitHubActions è il secondo report: scrive una tabella dei risultati
+      # nel "Job summary" dell'esecuzione e annota il codice dei test che falliscono.
       - name: Run E2E tests
         id: tests
         continue-on-error: true
-        run: dotnet test --configuration Release --no-build --logger "console;verbosity=normal"
+        run: >
+          dotnet test --configuration Release --no-build
+          --logger "console;verbosity=normal"
+          --logger "GitHubActions;summary-include-passed=true;summary-include-skipped=true"
 
       - name: Install Allure 3
         run: npm ci
