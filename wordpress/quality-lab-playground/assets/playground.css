@@ -81,10 +81,22 @@
 .qlp-bar-value { color: var(--qlp-muted); font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .qlp-bar-value em { font-style: normal; font-weight: 600; color: inherit; }
 .qlp-chart-note { color: var(--qlp-muted); font-size: 13px; margin: 10px 0 4px; }
-.qlp-how { font-size: 13px; color: var(--qlp-muted); }
-.qlp-how summary { cursor: pointer; color: var(--qlp-accent); font-weight: 600; }
-.qlp-how ul { margin: 8px 0 0; padding-left: 18px; }
-.qlp-how li { margin: 3px 0; }
+.qlp-how-link {
+  border: 0; background: none; padding: 0; cursor: pointer;
+  color: var(--qlp-accent); font-size: 13px; font-weight: 600; text-decoration: underline;
+}
+
+/* Finestra modale "Come funziona?" (elemento <dialog> nativo) */
+.qlp-modal {
+  border: 0; border-radius: 12px; padding: 24px;
+  width: min(520px, calc(100% - 32px)); background: #fff; color: #1f2328;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+}
+.qlp-modal::backdrop { background: rgba(15, 23, 42, 0.5); }
+.qlp-modal h3 { margin: 0 0 12px; font-size: 20px; }
+.qlp-modal ul { margin: 0 0 20px; padding-left: 20px; }
+.qlp-modal li { margin: 8px 0; }
+.qlp-modal form { display: flex; justify-content: flex-end; margin: 0; }
 @media (max-width: 600px) {
   /* Su schermi stretti il valore va sotto la barra, così la barra resta leggibile. */
   .qlp-bar-row { grid-template-columns: 64px 1fr; row-gap: 2px; margin: 8px 0; }
@@ -116,7 +128,7 @@
   .qlp-browsers { margin-left: 30px; }
 }
 
-.qlp-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-top: 24px; }
+.qlp-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin: 0 0 20px; }
 .qlp-run {
   border: 0; border-radius: 8px; padding: 10px 20px; cursor: pointer;
   background: var(--qlp-accent); color: #fff; font-size: 15px; font-weight: 600;
@@ -124,11 +136,11 @@
 .qlp-run:disabled { background: #9aa3ad; cursor: default; }
 .qlp-link { font-size: 15px; }
 
-.qlp-progress { margin: 20px 0 0; padding-left: 20px; color: var(--qlp-muted); font-size: 14px; }
+.qlp-progress { margin: -8px 0 20px; padding-left: 20px; color: var(--qlp-muted); font-size: 14px; }
 .qlp-progress .qlp-done { color: var(--qlp-ok); }
 .qlp-progress .qlp-done::after { content: " ✓"; }
 .qlp-progress .qlp-now { color: inherit; font-weight: 600; }
 .qlp-progress .qlp-now::after { content: " …"; }
 
-.qlp-message { margin: 16px 0 0; font-size: 14px; }
+.qlp-message { margin: -8px 0 20px; font-size: 14px; }
 .qlp-error, .qlp-loading { color: var(--qlp-muted); }

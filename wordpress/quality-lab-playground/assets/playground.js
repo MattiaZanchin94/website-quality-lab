@@ -35,6 +35,7 @@
       slowest: "il più lento",
       chartNote: "I browser vengono controllati contemporaneamente, ognuno su un computer separato: la verifica dura quanto il browser più lento.",
       howTitle: "Come funziona?",
+      close: "Chiudi",
       how: [
         "A ogni verifica GitHub Actions avvia un computer separato per ogni browser, e partono tutti insieme.",
         "Su ogni computer i controlli vengono eseguiti uno dopo l'altro, sempre nello stesso ordine.",
@@ -90,6 +91,7 @@
       slowest: "the slowest",
       chartNote: "The browsers are checked at the same time, each on a separate computer: the run lasts as long as the slowest browser.",
       howTitle: "How does it work?",
+      close: "Close",
       how: [
         "For every run, GitHub Actions starts a separate computer for each browser, and they all start together.",
         "On each computer the checks run one after another, always in the same order.",
@@ -207,10 +209,7 @@
         )
         .join("")}
       <p class="qlp-chart-note">${esc(T.chartNote)}</p>
-      <details class="qlp-how">
-        <summary>${esc(T.howTitle)}</summary>
-        <ul>${T.how.map((line) => `<li>${esc(line)}</li>`).join("")}</ul>
-      </details>
+      <button type="button" class="qlp-how-link" aria-haspopup="dialog">${esc(T.howTitle)}</button>
     </div>`;
   }
 
@@ -244,6 +243,27 @@
         return `<span class="qlp-b qlp-b-${esc(st)}" title="${esc(hint)}">${BROWSER_NAMES[b]}</span>`;
       })
       .join("")}</span>`;
+  }
+
+  // Finestra modale "Come funziona?": creata una sola volta e aggiunta a <body>,
+  // così non si chiude quando il riquadro viene ridisegnato durante un'esecuzione.
+  let dialog = null;
+  function howDialog() {
+    if (dialog) return dialog;
+    dialog = document.createElement("dialog");
+    dialog.className = "qlp qlp-modal";
+    dialog.setAttribute("aria-labelledby", "qlp-how-title");
+    dialog.setAttribute("data-no-translation", ""); // le traduzioni le gestiamo noi, non TranslatePress
+    dialog.innerHTML = `
+      <h3 id="qlp-how-title">${esc(T.howTitle)}</h3>
+      <ul>${T.how.map((line) => `<li>${esc(line)}</li>`).join("")}</ul>
+      <form method="dialog"><button type="submit" class="qlp-run">${esc(T.close)}</button></form>`;
+    // Un clic sullo sfondo scuro (fuori dal contenuto) chiude la finestra; Esc la chiude già da solo.
+    dialog.addEventListener("click", (e) => {
+      if (e.target === dialog) dialog.close();
+    });
+    document.body.appendChild(dialog);
+    return dialog;
   }
 
   /* ---------- Render ---------- */
@@ -366,16 +386,18 @@
     root.innerHTML = `
       <div class="qlp-card ${state.justUpdated ? "qlp-updated" : ""}">
         ${renderTabs(s)}
-        ${body}
         <div class="qlp-actions">
           ${renderButton()}
         </div>
         ${renderProgress()}
         ${state.message ? `<p class="qlp-message">${esc(state.message)}</p>` : ""}
+        ${body}
       </div>`;
 
     const btn = root.querySelector(".qlp-run");
     if (btn) btn.addEventListener("click", startRun);
+    const how = root.querySelector(".qlp-how-link");
+    if (how) how.addEventListener("click", () => howDialog().showModal());
     root.querySelectorAll(".qlp-tab").forEach((tab) =>
       tab.addEventListener("click", () => {
         state.view = tab.dataset.view;
