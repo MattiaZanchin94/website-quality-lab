@@ -1,0 +1,12 @@
+{
+  "name": "website-quality-lab",
+  "private": true,
+  "description": "Allure 3 CLI per generare il report dei test E2E",
+  "scripts": {
+    "report": "allure generate bin/Debug/net10.0/allure-results",
+    "report:open": "allure open"
+  },
+  "devDependencies": {
+    "allure": "3.33.0"
+  }
+}

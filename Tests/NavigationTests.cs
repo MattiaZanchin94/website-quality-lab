@@ -1,10 +1,17 @@
 using System.Text.RegularExpressions;
+using Allure.Net.Commons;
+using Allure.Net.Commons.Attributes;
+using Allure.NUnit;
 using Microsoft.Playwright;
 using Microsoft.Playwright.NUnit;
 
 namespace QualityLab.Tests;
 
 [TestFixture]
+[AllureNUnit]
+[AllureEpic("mattiazanchin.com")]
+[AllureFeature("Navigazione")]
+[AllureSeverity(SeverityLevel.critical)]
 public class NavigationTests : PageTest
 {
     private const string BaseUrl = "https://mattiazanchin.com";
