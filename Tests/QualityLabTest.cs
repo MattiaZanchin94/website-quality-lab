@@ -5,6 +5,8 @@ using Allure.NUnit;
 using Microsoft.Playwright;
 using Microsoft.Playwright.NUnit;
 using Microsoft.Playwright.TestAdapter;
+using NUnit.Framework.Interfaces;
+using NUnit.Framework.Internal;
 
 namespace QualityLab.Tests;
 
@@ -47,6 +49,36 @@ public abstract class QualityLabTest : PageTest
         // più browser risulta come esecuzioni distinte, ognuna con il suo storico.
         AllureApi.AddTestParameter("Browser", ActualBrowser);
         AllureApi.AddLabel("browser", ActualBrowser);
+    }
+
+    // Il CAPTCHA può comparire in qualsiasi momento, non solo all'apertura della pagina
+    // (es. la home si carica e qualche secondo dopo SiteGround reindirizza alla verifica).
+    // Osserviamo quindi ogni cambio di pagina per tutta la durata del test.
+    private bool _blockedByCaptcha;
+
+    [SetUp]
+    public void WatchForBotProtection()
+    {
+        _blockedByCaptcha = false;
+        Page.FrameNavigated += (_, frame) =>
+        {
+            if (frame == Page.MainFrame && Captcha.IsMatch(frame.Url)) _blockedByCaptcha = true;
+        };
+    }
+
+    [TearDown]
+    public void MarkBlockedTestsAsNotVerifiable()
+    {
+        // Se il test è fallito mentre (o dopo che) l'hosting mostrava un CAPTCHA, non è un errore del sito:
+        // trasformiamo l'esito in "ignorato", con il motivo. Assert.Ignore qui non basterebbe
+        // (NUnit terrebbe il fallimento): modifichiamo il risultato attraverso il contesto di esecuzione.
+        var result = TestExecutionContext.CurrentContext.CurrentResult;
+        var blocked = _blockedByCaptcha || Captcha.IsMatch(Page.Url) || AutomaticCheck.IsMatch(Page.Url);
+        if (blocked && result.ResultState.Status == TestStatus.Failed)
+        {
+            result.SetResult(ResultState.Ignored,
+                $"Non verificabile: la protezione anti-bot dell'hosting ha mostrato un CAPTCHA ({ActualBrowser}).");
+        }
     }
 
     // ---------------------------------------------------------------------
