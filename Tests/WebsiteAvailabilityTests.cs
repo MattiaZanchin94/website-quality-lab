@@ -17,7 +17,7 @@ public class WebsiteAvailabilityTests : QualityLabTest
     [AllureDescription("La home page risponde senza errori e mostra il sito vero.")]
     public async Task WebsiteIsOnline()
     {
-        var response = await Page.GotoAsync(BaseUrl);
+        var response = await OpenAsync(BaseUrl);
 
         // Qualsiasi 2xx va bene: a volte la protezione anti-bot di SiteGround risponde 202
         // con una pagina di verifica che, dopo un controllo in JavaScript, carica il sito vero.

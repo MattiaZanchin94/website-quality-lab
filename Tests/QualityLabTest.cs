@@ -1,6 +1,8 @@
+using System.Text.RegularExpressions;
 using Allure.Net.Commons;
 using Allure.Net.Commons.Attributes;
 using Allure.NUnit;
+using Microsoft.Playwright;
 using Microsoft.Playwright.NUnit;
 using Microsoft.Playwright.TestAdapter;
 
@@ -40,5 +42,50 @@ public abstract class QualityLabTest : PageTest
         // più browser risulta come esecuzioni distinte, ognuna con il suo storico.
         AllureApi.AddTestParameter("Browser", ActualBrowser);
         AllureApi.AddLabel("browser", ActualBrowser);
+    }
+
+    // ---------------------------------------------------------------------
+    // Protezione anti-bot dell'hosting (SiteGround)
+    // ---------------------------------------------------------------------
+    // A volte SiteGround non mostra la pagina ma una verifica anti-bot:
+    //   /.well-known/sgcaptcha/  → controllo automatico in JavaScript, poi carica il sito vero
+    //   /.well-known/captcha/    → CAPTCHA da risolvere a mano: il test non può (e non deve) superarlo
+    // Nel secondo caso il controllo non è "fallito" ma "non verificabile": lo segniamo come ignorato,
+    // con il motivo, così un vero problema del sito resta rosso e un blocco dell'ambiente no.
+
+    private static readonly Regex AutomaticCheck = new(@"/\.well-known/sgcaptcha/", RegexOptions.Compiled);
+    private static readonly Regex Captcha = new(@"/\.well-known/captcha/", RegexOptions.Compiled);
+
+    /// <summary>Apre una pagina e ignora il test se l'hosting mostra un CAPTCHA.</summary>
+    protected async Task<IResponse?> OpenAsync(string url)
+    {
+        var response = await Page.GotoAsync(url);
+        await SkipIfBlockedByBotProtectionAsync();
+        return response;
+    }
+
+    /// <summary>
+    /// Da chiamare dopo ogni azione che cambia pagina (es. un clic su un link).
+    /// Aspetta la fine del controllo automatico; se poi compare un CAPTCHA, ignora il test.
+    /// </summary>
+    protected async Task SkipIfBlockedByBotProtectionAsync()
+    {
+        if (AutomaticCheck.IsMatch(Page.Url))
+        {
+            try
+            {
+                // Di solito dopo qualche secondo la verifica automatica porta alla pagina vera.
+                await Page.WaitForURLAsync(url => !AutomaticCheck.IsMatch(url), new() { Timeout = 15_000 });
+            }
+            catch (TimeoutException)
+            {
+                // Rimasti bloccati sulla verifica: lo gestisce il controllo qui sotto.
+            }
+        }
+
+        if (Captcha.IsMatch(Page.Url) || AutomaticCheck.IsMatch(Page.Url))
+        {
+            Assert.Ignore($"Non verificabile: la protezione anti-bot dell'hosting ha mostrato un CAPTCHA ({ActualBrowser}).");
+        }
     }
 }

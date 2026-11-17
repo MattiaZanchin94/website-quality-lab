@@ -18,7 +18,7 @@ public class ArticleTests : QualityLabTest
     [AllureLabel(NameEn, "The latest article opens with its title and content")]
     public async Task LatestTechnicalArticleOpens()
     {
-        await Page.GotoAsync(CategoryUrl);
+        await OpenAsync(CategoryUrl);
 
         // Prendiamo l'articolo più recente, qualunque sia:
         // il test resta valido anche quando pubblichi un nuovo articolo.
@@ -34,6 +34,7 @@ public class ArticleTests : QualityLabTest
         Assert.That(expectedUrl, Is.Not.Null.And.Not.Empty);
 
         await titleLink.ClickAsync();
+        await SkipIfBlockedByBotProtectionAsync();
 
         // La pagina aperta è proprio quell'articolo...
         await Expect(Page).ToHaveURLAsync(expectedUrl!);

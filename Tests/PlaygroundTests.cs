@@ -20,7 +20,7 @@ public class PlaygroundTests : QualityLabTest
     [AllureDescription("La pagina Playground carica e mostra i risultati dell'ultima esecuzione dei test.")]
     public async Task PlaygroundShowsLatestResults()
     {
-        await Page.GotoAsync(PlaygroundUrl);
+        await OpenAsync(PlaygroundUrl);
 
         // I risultati arrivano via JavaScript da summary.json: Expect aspetta che compaiano.
         // Niente ^...$ nella regex: nell'HTML il testo è circondato da spazi e a capo.
@@ -40,7 +40,7 @@ public class PlaygroundTests : QualityLabTest
     [AllureDescription("Nella versione /en/ del sito, stato, statistiche e nomi dei controlli sono in inglese.")]
     public async Task PlaygroundIsTranslatedToEnglish()
     {
-        await Page.GotoAsync(BaseUrl + "/en/playground/");
+        await OpenAsync(BaseUrl + "/en/playground/");
 
         await Expect(Page.Locator(".qlp-pill"))
             .ToHaveTextAsync(new Regex("Site operational|Issues detected"), new() { Timeout = 15_000 });
@@ -58,7 +58,7 @@ public class PlaygroundTests : QualityLabTest
     [AllureDescription("Selezionando la scheda di un browser, la pagina mostra solo i risultati di quel browser.")]
     public async Task BrowserTabShowsSingleBrowserResults()
     {
-        await Page.GotoAsync(PlaygroundUrl);
+        await OpenAsync(PlaygroundUrl);
 
         var firefoxTab = Page.GetByRole(AriaRole.Tab, new() { Name = "Firefox" });
         await firefoxTab.ClickAsync(new() { Timeout = 15_000 });
@@ -80,7 +80,7 @@ public class PlaygroundTests : QualityLabTest
     [AllureDescription("Il pulsante per i visitatori è presente: se manca, il token GitHub in WordPress non è configurato o è scaduto.")]
     public async Task RunButtonIsAvailable()
     {
-        await Page.GotoAsync(PlaygroundUrl);
+        await OpenAsync(PlaygroundUrl);
 
         // Non lo clicchiamo: questo test gira ogni ora e avvierebbe un'altra esecuzione all'infinito.
         // Verifichiamo solo che ci sia, in uno dei suoi stati possibili.

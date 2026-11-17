@@ -66,6 +66,14 @@
 .qlp-icon { width: 20px; text-align: center; font-weight: 700; }
 .qlp-t-passed .qlp-icon { color: var(--qlp-ok); }
 .qlp-t-failed .qlp-icon, .qlp-t-broken .qlp-icon { color: var(--qlp-ko); }
+.qlp-t-skipped .qlp-icon { color: var(--qlp-muted); }
+.qlp-t-skipped .qlp-name { color: var(--qlp-muted); }
+
+/* Nota per i controlli bloccati dalla protezione anti-bot: informativa, non un errore. */
+.qlp-blocked {
+  margin: -8px 0 16px; padding: 8px 12px; border-radius: 8px;
+  background: #fff7e6; color: #8a5300; font-size: 13px;
+}
 .qlp-dur { color: var(--qlp-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 
 .qlp-matrix { margin: -12px 0 8px; }

@@ -41,7 +41,7 @@ public class NavigationTests : QualityLabTest
         AllureApi.AddLabel("order", (index + 1).ToString());
         SetEnglishName($"The “{MainMenu[index].LabelEn}” menu item opens the right page");
 
-        await Page.GotoAsync(BaseUrl);
+        await OpenAsync(BaseUrl);
 
         // Il tema ha due menu (desktop e mobile): prendiamo solo il link visibile nell'header.
         var menuLink = Page.Locator("header")
@@ -49,6 +49,7 @@ public class NavigationTests : QualityLabTest
             .Filter(new() { Visible = true });
 
         await menuLink.ClickAsync();
+        await SkipIfBlockedByBotProtectionAsync();
 
         await Expect(Page).ToHaveURLAsync(BaseUrl + expectedPath);
         await Expect(Page).ToHaveTitleAsync(new Regex($"^{Regex.Escape(menuLabel)} - "));

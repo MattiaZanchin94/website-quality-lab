@@ -117,6 +117,7 @@ dotnet test --filter TestCategory=Smoke
 - **Order from data, not markup.** The Playground page lists checks by priority (smoke first, then severity, then menu position), computed from test metadata in `summary.json`.
 - **One source of truth for the menu.** Navigation tests are generated with `[TestCaseSource]` from a single ordered array: updating the menu means editing one line.
 - **Security of the run button.** The GitHub token lives only in `wp-config.php`; the browser talks to WordPress, never to GitHub. A global cooldown and a check for runs already in progress prevent abuse.
+- **Bot protection is not a site failure.** If the hosting provider's anti-bot protection shows a CAPTCHA to the test browser, the check is marked *not verifiable* (`Assert.Ignore`, with the reason) instead of failed. Tests never try to get past a CAPTCHA.
 - **The checks never trigger themselves.** The Playground test verifies that the run button exists but never clicks it, otherwise every hourly run would start another one.
 
 ## Author

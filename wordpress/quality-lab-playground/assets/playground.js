@@ -49,6 +49,8 @@
       noResults: "Nessun risultato ancora per questo browser: avvia i controlli per ottenerli.",
       runOn: (name) => `▶ Avvia i controlli su ${name}`,
       passed: "superato",
+      notVerifiable: "non verificabile",
+      blockedNote: (n) => `${n === 1 ? "1 controllo non verificabile" : `${n} controlli non verificabili`}: la protezione anti-bot dell'hosting ha bloccato il browser di test con un CAPTCHA. Non è un errore del sito.`,
       notPassed: "non superato",
       types: {
         smoke: ["Controllo essenziale: verifica che le funzioni principali del sito siano disponibili", "controlli essenziali, i primi a segnalare un problema"],
@@ -105,6 +107,8 @@
       noResults: "No results yet for this browser: run the checks to get them.",
       runOn: (name) => `▶ Run the checks on ${name}`,
       passed: "passed",
+      notVerifiable: "not verifiable",
+      blockedNote: (n) => `${n === 1 ? "1 check" : `${n} checks`} could not be verified: the host's anti-bot protection blocked the test browser with a CAPTCHA. This is not a site error.`,
       notPassed: "not passed",
       types: {
         smoke: ["Essential check: verifies that the site's main functions are available", "essential checks, the first to flag a problem"],
@@ -193,7 +197,7 @@
       .map((b) => ({
         b,
         ms: s.runs[b].durationMs,
-        ok: s.tests.every((t) => !t.browsers || !(b in t.browsers) || t.browsers[b] === "passed"),
+        ok: s.tests.every((t) => !t.browsers || !(b in t.browsers) || isOk(t.browsers[b])),
       }));
     if (rows.length < 2) return "";
     const max = Math.max(...rows.map((r) => r.ms));
@@ -212,6 +216,9 @@
       <button type="button" class="qlp-how-link" aria-haspopup="dialog">${esc(T.howTitle)}</button>
     </div>`;
   }
+
+  // "skipped" = bloccato dalla protezione anti-bot: non verificabile, ma non è un errore del sito.
+  const isOk = (status) => status === "passed" || status === "skipped";
 
   const STATUS_ICON = { passed: "✓", failed: "✗", broken: "!", skipped: "–" };
 
@@ -239,7 +246,7 @@
       .filter((b) => b in t.browsers)
       .map((b) => {
         const st = t.browsers[b];
-        const hint = `${T.engines[b]}: ${st === "passed" ? T.passed : T.notPassed}`;
+        const hint = `${T.engines[b]}: ${st === "passed" ? T.passed : st === "skipped" ? T.notVerifiable : T.notPassed}`;
         return `<span class="qlp-b qlp-b-${esc(st)}" title="${esc(hint)}">${BROWSER_NAMES[b]}</span>`;
       })
       .join("")}</span>`;
@@ -275,6 +282,7 @@
       return {
         tests: s.tests,
         passed: s.passed,
+        skipped: s.skipped || 0,
         total: s.total,
         successRate: s.successRate,
         durationMs: totalDuration(s),
@@ -285,16 +293,19 @@
     }
     const tests = s.tests.filter((t) => t.browsers && v in t.browsers);
     const passed = tests.filter((t) => t.browsers[v] === "passed").length;
+    const skipped = tests.filter((t) => t.browsers[v] === "skipped").length;
+    const verified = tests.length - skipped;
     const run = (s.runs && s.runs[v]) || {};
     return {
       tests,
       passed,
+      skipped,
       total: tests.length,
-      successRate: tests.length ? Math.round((passed / tests.length) * 1000) / 10 : 0,
+      successRate: verified ? Math.round((passed / verified) * 1000) / 10 : 0,
       durationMs: run.durationMs ?? 0,
       startedAt: run.startedAt ?? s.startedAt,
       trigger: run.trigger ?? s.trigger,
-      status: tests.length && passed === tests.length ? "passed" : "failed",
+      status: verified && passed === verified ? "passed" : "failed",
     };
   }
 
@@ -307,7 +318,7 @@
         // Pallino colorato con l'esito di quel browser (nessuno se non ha ancora risultati).
         let dot = "";
         if (key !== "all" && s.tests.some((t) => t.browsers && key in t.browsers)) {
-          const ok = s.tests.every((t) => !t.browsers || !(key in t.browsers) || t.browsers[key] === "passed");
+          const ok = s.tests.every((t) => !t.browsers || !(key in t.browsers) || isOk(t.browsers[key]));
           dot = `<span class="qlp-tab-dot ${ok ? "qlp-ok" : "qlp-ko"}"></span>`;
         }
         return `<button type="button" role="tab" class="qlp-tab" data-view="${esc(key)}" aria-selected="${selected}">${dot}${esc(name)}</button>`;
@@ -348,6 +359,7 @@
           <div class="qlp-stat"><span class="qlp-num">${d.successRate.toLocaleString(LANG)}%</span><span class="qlp-label">${esc(T.successRate)}</span></div>
           <div class="qlp-stat"><span class="qlp-num">${minutes(d.durationMs)}</span><span class="qlp-label">${esc(state.view === "all" ? T.durationAll : T.duration)}</span></div>
         </div>
+        ${d.skipped ? `<p class="qlp-blocked">${esc(T.blockedNote(d.skipped))}</p>` : ""}
         ${
           state.view === "all" && s.browsers && s.browsers.length > 1
             ? `<p class="qlp-meta qlp-matrix">${esc(

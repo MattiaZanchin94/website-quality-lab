@@ -119,13 +119,15 @@ function slowest(runsByBrowser) {
 }
 
 const summary = {
-  status: total > 0 && passed === total ? "passed" : "failed",
+  // I controlli "skipped" sono quelli bloccati dalla protezione anti-bot dell'hosting:
+  // non verificabili, quindi non contano né come superati né come falliti.
+  status: total > count("skipped") && count("failed") + count("broken") === 0 ? "passed" : "failed",
   total,
   passed,
   failed: count("failed"),
   broken: count("broken"),
   skipped: count("skipped"),
-  successRate: total ? Math.round((passed / total) * 1000) / 10 : 0,
+  successRate: total > count("skipped") ? Math.round((passed / (total - count("skipped"))) * 1000) / 10 : 0,
   checks: tests.length,
   browsers,
   ranNow, // i browser eseguiti in quest'ultimo run
