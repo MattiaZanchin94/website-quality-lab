@@ -6,10 +6,12 @@ namespace QualityLab.Tests;
 [TestFixture]
 [Category("Smoke")]
 [AllureFeature("Disponibilità")]
+[AllureLabel(FeatureEn, "Availability")]
 public class WebsiteAvailabilityTests : QualityLabTest
 {
     [Test]
     [AllureName("Il sito è raggiungibile e si carica correttamente")]
+    [AllureLabel(NameEn, "The site is reachable and loads correctly")]
     [AllureSeverity(SeverityLevel.blocker)]
     [AllureDescription("La home page risponde con HTTP 200 e viene visualizzata.")]
     public async Task WebsiteIsOnline()

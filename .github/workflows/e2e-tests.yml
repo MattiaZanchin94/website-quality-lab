@@ -1,7 +1,7 @@
 name: E2E tests
 
 # Chi ha avviato l'esecuzione compare nel titolo, es. "E2E · website" o "E2E · schedule".
-run-name: E2E · ${{ github.event_name == 'workflow_dispatch' && inputs.source || github.event_name }}
+run-name: E2E · ${{ github.event_name == 'workflow_dispatch' && format('{0} · {1}', inputs.source, inputs.browser || 'all') || github.event_name }}
 
 on:
   # Ogni ora, al minuto 17 (evitiamo lo scoccare dell'ora, quando GitHub è più carico).
@@ -17,6 +17,12 @@ on:
         description: "Chi ha avviato i test (manual, website)"
         required: false
         default: manual
+      browser:
+        description: "Browser su cui eseguire i test"
+        type: choice
+        required: false
+        default: all
+        options: [all, chromium, msedge, firefox, webkit]
 
 # Mai due esecuzioni in parallelo: una nuova richiesta aspetta che finisca quella in corso.
 concurrency:
@@ -27,7 +33,8 @@ permissions:
   contents: read
 
 jobs:
-  # 1) Gli stessi test, in parallelo, su tre motori di rendering diversi.
+  # 1) Gli stessi test, in parallelo, su più browser.
+  #    Esecuzioni programmate e push: tutti i browser. Su richiesta: tutti o uno solo.
   test:
     name: Test (${{ matrix.browser }})
     runs-on: ubuntu-latest
@@ -35,9 +42,11 @@ jobs:
     strategy:
       fail-fast: false # se un browser fallisce, gli altri continuano
       matrix:
-        browser: [chromium, firefox, webkit]
+        browser: ${{ fromJSON((inputs.browser && inputs.browser != 'all') && format('["{0}"]', inputs.browser) || '["chromium","msedge","firefox","webkit"]') }}
     env:
-      BROWSER: ${{ matrix.browser }}
+      # Edge è Chromium con il channel "msedge": per Playwright il tipo di browser resta chromium.
+      BROWSER: ${{ matrix.browser == 'msedge' && 'chromium' || matrix.browser }}
+      CHANNEL_ARGS: ${{ matrix.browser == 'msedge' && '-- Playwright.LaunchOptions.Channel=msedge' || '' }}
 
     steps:
       - name: Checkout
@@ -51,8 +60,14 @@ jobs:
       - name: Build
         run: dotnet build --configuration Release
 
+      # Per Edge serve il browser vero di Microsoft: --force lo reinstalla se è già presente sul runner.
       - name: Install Playwright browser
-        run: pwsh bin/Release/net10.0/playwright.ps1 install --with-deps ${{ matrix.browser }}
+        run: |
+          if [ "${{ matrix.browser }}" = "msedge" ]; then
+            pwsh bin/Release/net10.0/playwright.ps1 install --with-deps --force msedge
+          else
+            pwsh bin/Release/net10.0/playwright.ps1 install --with-deps ${{ matrix.browser }}
+          fi
 
       # continue-on-error: anche se un test fallisce vogliamo pubblicare i risultati.
       # Il logger GitHubActions è il secondo report: una tabella nel "Job summary".
@@ -63,6 +78,7 @@ jobs:
           dotnet test --configuration Release --no-build
           --logger "console;verbosity=normal"
           --logger "GitHubActions;summary-include-passed=true;summary-include-skipped=true"
+          $CHANNEL_ARGS
 
       - name: Upload Allure results
         uses: actions/upload-artifact@v4
@@ -77,7 +93,7 @@ jobs:
           echo "::error::Uno o più test E2E sono falliti su ${{ matrix.browser }}."
           exit 1
 
-  # 2) Unisce i risultati dei tre browser, genera i report e pubblica i dati per il sito.
+  # 2) Unisce i risultati dei browser, genera i report e pubblica i dati per il sito.
   publish:
     needs: test
     if: ${{ !cancelled() }} # pubblichiamo anche quando qualche test è fallito
@@ -115,9 +131,12 @@ jobs:
           path: allure-results
           merge-multiple: true
 
-      # Recupera lo storico pubblicato in precedenza, per i trend nel report.
-      - name: Download Allure history
-        run: curl -fsSL "$PAGES_URL/history.jsonl" -o history.jsonl || echo "Nessuno storico precedente"
+      # Recupera lo storico Allure e l'ultimo summary.json pubblicati in precedenza:
+      # se questa esecuzione riguarda un solo browser, gli altri mantengono i loro ultimi risultati.
+      - name: Download previous data
+        run: |
+          curl -fsSL "$PAGES_URL/history.jsonl" -o history.jsonl || echo "Nessuno storico precedente"
+          curl -fsSL "$PAGES_URL/summary.json" -o previous-summary.json || echo "Nessun summary precedente"
 
       - name: Generate Allure report
         run: npx allure generate "$RESULTS_DIR" --clean
@@ -136,7 +155,7 @@ jobs:
           RUN_TRIGGER: ${{ github.event_name == 'workflow_dispatch' && inputs.source || github.event_name }}
         run: |
           mkdir -p public
-          node scripts/summary.mjs "$RESULTS_DIR" public/summary.json
+          node scripts/summary.mjs "$RESULTS_DIR" public/summary.json previous-summary.json
           cp history.jsonl public/history.jsonl
 
       - name: Upload public data

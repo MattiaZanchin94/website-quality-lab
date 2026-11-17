@@ -8,6 +8,7 @@ namespace QualityLab.Tests;
 [TestFixture]
 [Category("Regression")]
 [AllureFeature("Playground")]
+[AllureLabel(FeatureEn, "Playground")]
 [AllureSeverity(SeverityLevel.normal)]
 public class PlaygroundTests : QualityLabTest
 {
@@ -15,6 +16,7 @@ public class PlaygroundTests : QualityLabTest
 
     [Test]
     [AllureName("La pagina Playground mostra i risultati aggiornati")]
+    [AllureLabel(NameEn, "The Playground page shows up-to-date results")]
     [AllureDescription("La pagina Playground carica e mostra i risultati dell'ultima esecuzione dei test.")]
     public async Task PlaygroundShowsLatestResults()
     {
@@ -33,7 +35,48 @@ public class PlaygroundTests : QualityLabTest
     }
 
     [Test]
+    [AllureName("La pagina Playground è disponibile anche in inglese")]
+    [AllureLabel(NameEn, "The Playground page is also available in English")]
+    [AllureDescription("Nella versione /en/ del sito, stato, statistiche e nomi dei controlli sono in inglese.")]
+    public async Task PlaygroundIsTranslatedToEnglish()
+    {
+        await Page.GotoAsync(BaseUrl + "/en/playground/");
+
+        await Expect(Page.Locator(".qlp-pill"))
+            .ToHaveTextAsync(new Regex("Site operational|Issues detected"), new() { Timeout = 15_000 });
+
+        await Expect(Page.Locator(".qlp-stat").Filter(new() { HasText = "checks passed" }))
+            .ToContainTextAsync(new Regex(@"\d+/\d+"));
+
+        // Anche i nomi dei controlli devono essere in inglese, non solo le etichette.
+        await Expect(Page.Locator(".qlp-name").First).ToHaveTextAsync(new Regex("^The "));
+    }
+
+    [Test]
+    [AllureName("Si possono vedere i risultati di un singolo browser")]
+    [AllureLabel(NameEn, "Results can be viewed for a single browser")]
+    [AllureDescription("Selezionando la scheda di un browser, la pagina mostra solo i risultati di quel browser.")]
+    public async Task BrowserTabShowsSingleBrowserResults()
+    {
+        await Page.GotoAsync(PlaygroundUrl);
+
+        var firefoxTab = Page.GetByRole(AriaRole.Tab, new() { Name = "Firefox" });
+        await firefoxTab.ClickAsync(new() { Timeout = 15_000 });
+
+        await Expect(firefoxTab).ToHaveAttributeAsync("aria-selected", "true");
+        // Nella scheda di un solo browser spariscono i badge degli altri browser...
+        await Expect(Page.Locator(".qlp-browsers")).ToHaveCountAsync(0);
+        // ...e il pulsante avvia i controlli solo su quel browser.
+        await Expect(Page.GetByRole(AriaRole.Button, new()
+            {
+                NameRegex = new Regex("Avvia i controlli su Firefox|Disponibile tra|Controlli in corso"),
+            }))
+            .ToBeVisibleAsync();
+    }
+
+    [Test]
     [AllureName("I visitatori possono avviare i controlli")]
+    [AllureLabel(NameEn, "Visitors can start the checks")]
     [AllureDescription("Il pulsante per i visitatori è presente: se manca, il token GitHub in WordPress non è configurato o è scaduto.")]
     public async Task RunButtonIsAvailable()
     {

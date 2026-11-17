@@ -7,6 +7,7 @@ namespace QualityLab.Tests;
 [TestFixture]
 [Category("Regression")]
 [AllureFeature("Articoli tecnici")]
+[AllureLabel(FeatureEn, "Technical articles")]
 [AllureSeverity(SeverityLevel.normal)]
 public class ArticleTests : QualityLabTest
 {
@@ -14,6 +15,7 @@ public class ArticleTests : QualityLabTest
 
     [Test]
     [AllureName("L'ultimo articolo pubblicato si apre con titolo e contenuto")]
+    [AllureLabel(NameEn, "The latest article opens with its title and content")]
     public async Task LatestTechnicalArticleOpens()
     {
         await Page.GotoAsync(CategoryUrl);

@@ -8,19 +8,21 @@ namespace QualityLab.Tests;
 [TestFixture]
 [Category("Smoke")]
 [AllureFeature("Navigazione")]
+[AllureLabel(FeatureEn, "Navigation")]
 [AllureSeverity(SeverityLevel.critical)]
 public class NavigationTests : QualityLabTest
 {
-    // Le voci del menu principale, nell'ordine in cui compaiono sul sito.
+    // Le voci del menu principale, nell'ordine in cui compaiono sul sito,
+    // con il nome che hanno nella versione inglese (/en/).
     // È l'unico punto da aggiornare quando il menu cambia.
-    private static readonly (string Label, string Path)[] MainMenu =
+    private static readonly (string Label, string Path, string LabelEn)[] MainMenu =
     [
-        ("Home", "/"),
-        ("Software testing", "/software-testing/"),
-        ("Origini", "/origini/"),
-        ("Carriera", "/carriera/"),
-        ("Articoli tecnici", "/category/articoli-tecnici/"),
-        ("Playground", "/playground/"),
+        ("Home", "/", "Home"),
+        ("Software testing", "/software-testing/", "Software testing"),
+        ("Origini", "/origini/", "Origins"),
+        ("Carriera", "/carriera/", "Career"),
+        ("Articoli tecnici", "/category/articoli-tecnici/", "Technical articles"),
+        ("Playground", "/playground/", "Playground"),
     ];
 
     // [TestCaseSource] genera un test per ogni voce: stessa logica, dati diversi
@@ -35,8 +37,9 @@ public class NavigationTests : QualityLabTest
         AllureApi.SetTestName($"La voce di menu «{menuLabel}» porta alla pagina giusta");
 
         // Posizione nel menu (1 = Home): serve alla pagina Playground per mostrare le voci in quest'ordine.
-        var position = Array.FindIndex(MainMenu, item => item.Label == menuLabel) + 1;
-        AllureApi.AddLabel("order", position.ToString());
+        var index = Array.FindIndex(MainMenu, item => item.Label == menuLabel);
+        AllureApi.AddLabel("order", (index + 1).ToString());
+        SetEnglishName($"The “{MainMenu[index].LabelEn}” menu item opens the right page");
 
         await Page.GotoAsync(BaseUrl);
 

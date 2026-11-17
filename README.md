@@ -5,9 +5,9 @@
 
 🇮🇹 [Leggi in italiano](README.it.md)
 
-End-to-end test suite that continuously checks my website, [mattiazanchin.com](https://mattiazanchin.com), on three browsers, and publishes the results on the site itself.
+End-to-end test suite that continuously checks my website, [mattiazanchin.com](https://mattiazanchin.com), on four browsers, and publishes the results on the site itself.
 
-On the **[Playground](https://mattiazanchin.com/playground/)** page anyone can see the latest results in plain language and **start a new test run** with one click.
+On the **[Playground](https://mattiazanchin.com/playground/)** page anyone can see the latest results in plain language, for all browsers or one at a time, and **start a new test run** on every browser or on a single one. The page is available in Italian and English.
 
 ---
 
@@ -20,21 +20,21 @@ flowchart LR
     S["Schedule (hourly)<br/>push to main"] --> GA
     subgraph GA["GitHub Actions"]
         direction TB
-        T1["Tests · Chromium"] & T2["Tests · Firefox"] & T3["Tests · WebKit"] --> P["Publish<br/>summary.json"]
+        T1["Tests · Chromium"] & T4["Tests · Edge"] & T2["Tests · Firefox"] & T3["Tests · WebKit"] --> P["Publish<br/>summary.json"]
     end
     P -- "summary.json" --> GP["GitHub Pages"]
     GP -- "fetch" --> V
-    T1 & T2 & T3 -. "Playwright" .-> SITE["mattiazanchin.com"]
+    T1 & T4 & T2 & T3 -. "Playwright" .-> SITE["mattiazanchin.com"]
 ```
 
 1. **Playwright + NUnit** tests (C#) open the real site and act like a user: open pages, click menu items, read articles.
-2. **GitHub Actions** runs them every hour, on every push, and on demand, on **Chromium, Firefox and WebKit** in parallel.
-3. A publish job merges the results of the three browsers and deploys a compact `summary.json` to **GitHub Pages**.
+2. **GitHub Actions** runs them every hour, on every push, and on demand, on **Chromium, Microsoft Edge, Firefox and WebKit** in parallel. On demand runs can target a single browser.
+3. A publish job merges the results of the browsers and deploys a compact `summary.json` to **GitHub Pages**.
 4. A small **WordPress plugin** shows that summary on the Playground page and lets visitors start a run, through a server-side proxy that keeps the GitHub token private and allows at most one run every 10 minutes.
 
 ## What is tested
 
-Each check runs on all three browsers (10 checks × 3 browsers = 30 runs).
+Each check runs on all four browsers (12 checks × 4 browsers = 48 runs).
 
 | Type | Area | Check | Severity |
 |---|---|---|---|
@@ -42,6 +42,8 @@ Each check runs on all three browsers (10 checks × 3 browsers = 30 runs).
 | Smoke | Navigation | Each main menu item opens the right page (6 items, in menu order) | critical |
 | Regression | Technical articles | The latest article opens with matching title and content | normal |
 | Regression | Playground | The Playground page shows up-to-date results | normal |
+| Regression | Playground | The Playground page is also available in English | normal |
+| Regression | Playground | Results can be viewed for a single browser | normal |
 | Regression | Playground | Visitors can start a run (the button is available) | normal |
 
 **Smoke** checks cover the essentials and are the first to flag a problem; **regression** checks go deeper into single features. Both are NUnit categories, so they can be run separately.
@@ -88,6 +90,9 @@ dotnet test
 
 # Choose the browser
 BROWSER=webkit dotnet test
+
+# Microsoft Edge (Chromium with the msedge channel; Edge must be installed)
+dotnet test -- Playwright.LaunchOptions.Channel=msedge
 
 # Run only the smoke checks
 dotnet test --filter TestCategory=Smoke

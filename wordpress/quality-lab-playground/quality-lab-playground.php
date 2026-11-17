@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Quality Lab Playground
  * Description: Mostra i risultati dei test E2E del sito e permette ai visitatori di avviarli. Shortcode: [quality_lab_playground]
- * Version:     1.2.0
+ * Version:     1.3.0
  * Author:      Mattia Zanchin
  * License:     MIT
  *
@@ -12,12 +12,13 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const QLP_VERSION     = '1.2.0';
+const QLP_VERSION     = '1.3.0';
 const QLP_REPO        = 'Zancus/website-quality-lab';
 const QLP_WORKFLOW    = 'e2e-tests.yml';
 const QLP_PAGES_URL   = 'https://zancus.github.io/website-quality-lab';
 const QLP_COOLDOWN    = 10 * MINUTE_IN_SECONDS; // al massimo un avvio ogni 10 minuti, per tutto il sito
 const QLP_STATUS_TTL  = 10;                      // secondi di cache dello stato, per non interrogare GitHub a ogni visita
+const QLP_BROWSERS    = array( 'all', 'chromium', 'msedge', 'firefox', 'webkit' ); // valori ammessi per l'avvio
 
 /* -------------------------------------------------------------------------
  * GitHub API
@@ -118,7 +119,13 @@ add_action(
 	}
 );
 
-function qlp_handle_run() {
+function qlp_handle_run( WP_REST_Request $request ) {
+	// Il visitatore può scegliere un solo browser: accettiamo solo valori noti, mai testo libero.
+	$browser = (string) $request->get_param( 'browser' );
+	if ( ! in_array( $browser, QLP_BROWSERS, true ) ) {
+		$browser = 'all';
+	}
+
 	$remaining = qlp_cooldown_remaining();
 	if ( $remaining > 0 ) {
 		return qlp_no_cache(
@@ -156,7 +163,10 @@ function qlp_handle_run() {
 		'/actions/workflows/' . QLP_WORKFLOW . '/dispatches',
 		array(
 			'ref'    => 'main',
-			'inputs' => array( 'source' => 'website' ),
+			'inputs' => array(
+				'source'  => 'website',
+				'browser' => $browser,
+			),
 		)
 	);
 
@@ -207,7 +217,9 @@ add_shortcode(
 			)
 		);
 
-		// Il contenuto viene disegnato da playground.js; questo è lo scheletro.
-		return '<div id="qlp-root" class="qlp" aria-live="polite"><p class="qlp-loading">Caricamento dei risultati…</p></div>';
+		// Il contenuto viene disegnato da playground.js, che sceglie la lingua da <html lang>.
+		// data-no-translation: TranslatePress non deve tradurre il riquadro, che ha già le sue traduzioni.
+		$loading = 0 === strpos( determine_locale(), 'en' ) ? 'Loading results…' : 'Caricamento dei risultati…';
+		return '<div id="qlp-root" class="qlp" aria-live="polite" data-no-translation><p class="qlp-loading">' . esc_html( $loading ) . '</p></div>';
 	}
 );

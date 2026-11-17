@@ -5,9 +5,9 @@
 
 🇬🇧 [Read in English](README.md)
 
-Suite di test end-to-end che controlla di continuo il mio sito, [mattiazanchin.com](https://mattiazanchin.com), su tre browser, e ne pubblica i risultati sul sito stesso.
+Suite di test end-to-end che controlla di continuo il mio sito, [mattiazanchin.com](https://mattiazanchin.com), su quattro browser, e ne pubblica i risultati sul sito stesso.
 
-Nella pagina **[Playground](https://mattiazanchin.com/playground/)** chiunque può vedere gli ultimi risultati, scritti in linguaggio semplice, e **avviare una nuova verifica** con un clic.
+Nella pagina **[Playground](https://mattiazanchin.com/playground/)** chiunque può vedere gli ultimi risultati, scritti in linguaggio semplice, per tutti i browser o uno alla volta, e **avviare una nuova verifica** su tutti i browser o su uno solo. La pagina è disponibile in italiano e in inglese.
 
 ---
 
@@ -20,21 +20,21 @@ flowchart LR
     S["Ogni ora<br/>push su main"] --> GA
     subgraph GA["GitHub Actions"]
         direction TB
-        T1["Test · Chromium"] & T2["Test · Firefox"] & T3["Test · WebKit"] --> P["Pubblicazione<br/>summary.json"]
+        T1["Test · Chromium"] & T4["Test · Edge"] & T2["Test · Firefox"] & T3["Test · WebKit"] --> P["Pubblicazione<br/>summary.json"]
     end
     P -- "summary.json" --> GP["GitHub Pages"]
     GP -- "fetch" --> V
-    T1 & T2 & T3 -. "Playwright" .-> SITE["mattiazanchin.com"]
+    T1 & T4 & T2 & T3 -. "Playwright" .-> SITE["mattiazanchin.com"]
 ```
 
 1. I test **Playwright + NUnit** (C#) aprono il sito reale e si comportano come un utente: aprono pagine, cliccano le voci del menu, leggono gli articoli.
-2. **GitHub Actions** li esegue ogni ora, a ogni push e su richiesta, su **Chromium, Firefox e WebKit** in parallelo.
-3. Un job di pubblicazione unisce i risultati dei tre browser e pubblica un `summary.json` compatto su **GitHub Pages**.
+2. **GitHub Actions** li esegue ogni ora, a ogni push e su richiesta, su **Chromium, Microsoft Edge, Firefox e WebKit** in parallelo. Le esecuzioni su richiesta possono riguardare un solo browser.
+3. Un job di pubblicazione unisce i risultati dei browser e pubblica un `summary.json` compatto su **GitHub Pages**.
 4. Un piccolo **plugin WordPress** mostra quel riepilogo nella pagina Playground e permette ai visitatori di avviare i test, passando da un proxy lato server che tiene privato il token GitHub e consente al massimo un'esecuzione ogni 10 minuti.
 
 ## Cosa viene verificato
 
-Ogni controllo gira su tutti e tre i browser (10 controlli × 3 browser = 30 esecuzioni).
+Ogni controllo gira su tutti e quattro i browser (12 controlli × 4 browser = 48 esecuzioni).
 
 | Tipo | Area | Controllo | Severità |
 |---|---|---|---|
@@ -42,6 +42,8 @@ Ogni controllo gira su tutti e tre i browser (10 controlli × 3 browser = 30 ese
 | Smoke | Navigazione | Ogni voce del menu principale porta alla pagina giusta (6 voci, nell'ordine del menu) | critical |
 | Regression | Articoli tecnici | L'ultimo articolo pubblicato si apre con titolo e contenuto | normal |
 | Regression | Playground | La pagina Playground mostra i risultati aggiornati | normal |
+| Regression | Playground | La pagina Playground è disponibile anche in inglese | normal |
+| Regression | Playground | Si possono vedere i risultati di un singolo browser | normal |
 | Regression | Playground | I visitatori possono avviare i controlli (il pulsante è disponibile) | normal |
 
 I controlli **smoke** coprono l'essenziale e sono i primi a segnalare un problema; quelli **regression** approfondiscono le singole funzionalità. Sono categorie NUnit, quindi si possono eseguire separatamente.
@@ -88,6 +90,9 @@ dotnet test
 
 # Scelta del browser
 BROWSER=webkit dotnet test
+
+# Microsoft Edge (Chromium con il channel msedge; Edge deve essere installato)
+dotnet test -- Playwright.LaunchOptions.Channel=msedge
 
 # Solo i controlli smoke
 dotnet test --filter TestCategory=Smoke
