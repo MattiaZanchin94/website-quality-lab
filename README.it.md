@@ -117,6 +117,7 @@ dotnet test --filter TestCategory=Smoke
 ## Scelte di progettazione
 
 - **Risultati in linguaggio semplice.** I nomi dei test sono scritti per chi non è tecnico: sul sito compaiono frasi come “Il sito è raggiungibile e si carica correttamente” invece dei nomi dei metodi.
+- **Avanzamento in diretta.** Durante un'esecuzione ogni test comunica *iniziato / superato / fallito* al plugin WordPress (`Tests/LiveProgress.cs`, autenticato con una chiave segreta condivisa). La Playground mostra quale controllo è in corso su quale browser e una barra che avanza in modo continuo, ma non supera mai l'avanzamento reale né torna indietro. L'invio è "spara e dimentica": se non riesce, i test non ne risentono.
 - **L'ordine nasce dai dati, non dall'HTML.** La pagina Playground elenca i controlli per priorità (prima gli smoke, poi la severità, poi la posizione nel menu), calcolata dai metadati dei test in `summary.json`.
 - **Il menu è definito una volta sola.** I test di navigazione sono generati con `[TestCaseSource]` da un unico array ordinato: per aggiornare il menu basta modificare una riga.
 - **Sicurezza del pulsante.** Il token GitHub sta solo in `wp-config.php`; il browser parla con WordPress, mai con GitHub. Un cooldown globale e il controllo delle esecuzioni già in corso evitano abusi.

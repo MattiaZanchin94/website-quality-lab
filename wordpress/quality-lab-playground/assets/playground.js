@@ -66,6 +66,17 @@
       runNow: "▶ Avvia i controlli ora",
       running: "Controlli in corso…",
       availableIn: (min) => `Disponibile tra ${min} min`,
+      live: {
+        starting: "Richiesta inviata",
+        setup: "Preparazione dei browser",
+        tests: (done, total) => `Verifica in corso: ${done} di ${total} controlli completati`,
+        publish: "Pubblicazione dei risultati",
+        runningNow: "In esecuzione",
+        on: "su",
+        pending: "in attesa",
+        running: "in esecuzione",
+        progressLabel: "Avanzamento della verifica",
+      },
       steps: {
         starting: "Richiesta inviata",
         queued: "Preparazione dell'ambiente di verifica",
@@ -132,6 +143,17 @@
       runNow: "▶ Run the checks now",
       running: "Checks in progress…",
       availableIn: (min) => `Available in ${min} min`,
+      live: {
+        starting: "Request sent",
+        setup: "Preparing the browsers",
+        tests: (done, total) => `Checking the site: ${done} of ${total} checks done`,
+        publish: "Publishing the results",
+        runningNow: "Running",
+        on: "on",
+        pending: "waiting",
+        running: "running",
+        progressLabel: "Run progress",
+      },
       steps: {
         starting: "Request sent",
         queued: "Preparing the test environment",
@@ -295,13 +317,15 @@
   }
 
 
-  function renderBrowsers(t) {
+  function renderBrowsers(t, info) {
     if (!t.browsers) return "";
     return `<span class="qlp-browsers">${Object.keys(BROWSER_NAMES)
-      .filter((b) => b in t.browsers)
+      .filter((b) => b in t.browsers || (info && info.browsers.includes(b)))
       .map((b) => {
-        const st = t.browsers[b];
-        const hint = `${T.engines[b]}: ${st === "passed" ? T.passed : st === "skipped" ? T.notVerifiable : T.notPassed}`;
+        // Durante un'esecuzione mostriamo lo stato in diretta, altrimenti l'ultimo risultato.
+        const st = liveStateOf(info, t, b) || t.browsers[b];
+        const word = { passed: T.passed, skipped: T.notVerifiable, pending: T.live.pending, running: T.live.running }[st] || T.notPassed;
+        const hint = `${T.engines[b]}: ${word}`;
         return `<span class="qlp-b qlp-b-${esc(st)}" title="${esc(hint)}">${BROWSER_NAMES[b]}</span>`;
       })
       .join("")}</span>`;
@@ -326,6 +350,151 @@
     });
     document.body.appendChild(dialog);
     return dialog;
+  }
+
+  /* ---------- Avanzamento in diretta ---------- */
+  // Durante un'esecuzione i test comunicano a WordPress "iniziato / superato / fallito" (status.progress).
+  // Da qui ricaviamo lo stato di ogni controllo e una barra che si riempie in modo continuo,
+  // agganciata ai dati reali: non supera mai il punto successivo e non torna mai indietro.
+
+  const ALL_TEST_BROWSERS = ["chromium", "msedge", "firefox", "webkit"];
+  const SETUP_MS = 75000; // durata tipica della preparazione dei browser su GitHub
+  const PUBLISH_MS = 30000; // durata tipica della pubblicazione dei risultati
+  const live = { seen: {}, allDoneAt: null, shown: 0, target: 0, startedAt: 0, since: 0, lastFrame: 0 };
+
+  // "since": l'esecuzione da seguire è quella creata dopo questo istante (non quella precedente, già finita).
+  function resetLive(since) {
+    live.seen = {};
+    live.allDoneAt = null;
+    live.shown = 0;
+    live.target = 0;
+    live.startedAt = Date.now();
+    live.since = since || 0;
+  }
+
+  // L'esecuzione nello stato è quella che stiamo seguendo?
+  const isFollowedRun = (run) => run && new Date(run.createdAt).getTime() >= live.since;
+
+  // Browser coinvolti nell'esecuzione: dal titolo (es. "E2E · website · firefox"), altrimenti tutti.
+  function runBrowsers(run) {
+    const m = run && run.title && run.title.match(/·\s*(chromium|msedge|firefox|webkit)\s*$/);
+    return m ? [m[1]] : ALL_TEST_BROWSERS;
+  }
+
+  function liveInfo() {
+    const st = state.status;
+    if (!state.following || !st || !isFollowedRun(st.run) || !state.summary) return null;
+    const browsers = runBrowsers(st.run);
+    const progress = st.progress || {};
+    const tests = state.summary.tests.filter((t) => t.key);
+    const now = Date.now();
+    let done = 0;
+    let partial = 0;
+    const current = [];
+    for (const b of browsers) {
+      const p = progress[b] || { tests: {} };
+      for (const t of tests) {
+        const s = p.tests[t.key];
+        if (s && s !== "running") done++;
+        if (s === "running") {
+          const id = b + "|" + t.key;
+          live.seen[id] = live.seen[id] || now;
+          const expected = (t.durations && t.durations[b]) || 3000;
+          partial += Math.min(0.9, (now - live.seen[id]) / expected); // il test in corso conta in parte
+          current.push({ b, t });
+        }
+      }
+    }
+    const total = tests.length * browsers.length;
+    return { browsers, progress, done, partial, total, current, hasData: Object.keys(progress).length > 0 };
+  }
+
+  // Percentuale "vera" verso cui la barra si muove.
+  function liveTarget(info) {
+    const now = Date.now();
+    if (state.phase === "refreshing") return 100; // esecuzione finita, risultati in arrivo
+    if (!info || info.done + info.current.length === 0) {
+      // Richiesta inviata e preparazione dei browser: 2% → 14% nel tempo tipico.
+      return Math.min(14, 2 + ((now - live.startedAt) / SETUP_MS) * 12);
+    }
+    if (info.done < info.total) {
+      live.allDoneAt = null;
+      return 15 + 80 * ((info.done + info.partial) / info.total); // controlli: 15% → 95%
+    }
+    live.allDoneAt = live.allDoneAt || now;
+    return Math.min(99, 95 + ((now - live.allDoneAt) / PUBLISH_MS) * 4); // pubblicazione: 95% → 99%
+  }
+
+  function livePhaseText(info) {
+    if (state.phase === "starting") return T.live.starting;
+    if (state.phase === "refreshing") return T.live.publish;
+    if (state.waiting) return T.waiting;
+    if (!info || info.done + info.current.length === 0) return T.live.setup;
+    if (info.done >= info.total) return T.live.publish;
+    return T.live.tests(info.done, info.total);
+  }
+
+  function renderLiveProgress() {
+    if (state.phase === "idle") return "";
+    const info = liveInfo();
+    const pct = Math.round(live.shown);
+    const now = info && info.current.length
+      ? `<p class="qlp-live-now"><span class="qlp-pulse"></span>${esc(T.live.runningNow)}: ${info.current
+          .slice(0, 2)
+          .map((c) => `«${esc(titleOf(c.t))}» ${esc(T.live.on)} ${BROWSER_NAMES[c.b]}`)
+          .join(" · ")}</p>`
+      : "";
+    return `<div class="qlp-live">
+      <div class="qlp-live-head"><span class="qlp-live-phase">${esc(livePhaseText(info))}</span><span class="qlp-live-pct">${pct}%</span></div>
+      <div class="qlp-live-track" role="progressbar" aria-label="${esc(T.live.progressLabel)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}">
+        <span class="qlp-live-fill" style="width:${live.shown.toFixed(2)}%"></span>
+      </div>
+      ${now}
+    </div>`;
+  }
+
+  // Animazione continua: a ogni passo la barra si avvicina al valore vero, senza mai tornare indietro.
+  function tick() {
+    if (state.phase === "idle") return;
+    const info = liveInfo();
+    live.target = Math.max(live.target, liveTarget(info));
+    const now = Date.now();
+    const dt = now - live.lastFrame; // millisecondi dall'ultimo aggiornamento
+    if (dt > 1000) {
+      // La pagina non veniva aggiornata (scheda nascosta, telefono bloccato, animazioni sospese):
+      // nessuno ha visto la barra, quindi si porta subito al valore vero.
+      live.shown = live.target;
+    } else {
+      // Velocità basata sul tempo (uguale a 60 o a 4 aggiornamenti al secondo):
+      // al massimo 9 punti al secondo, così anche un salto del valore vero diventa uno scorrimento.
+      const gap = live.target - live.shown;
+      const step = Math.max(0.0018 * dt, Math.min(0.009 * dt, gap * 0.002 * dt));
+      live.shown = Math.min(live.target, live.shown + step);
+    }
+    live.lastFrame = now;
+    const fill = root.querySelector(".qlp-live-fill");
+    const pct = root.querySelector(".qlp-live-pct");
+    const bar = root.querySelector(".qlp-live-track");
+    if (fill) fill.style.width = live.shown.toFixed(2) + "%";
+    if (pct) pct.textContent = Math.round(live.shown) + "%";
+    if (bar) bar.setAttribute("aria-valuenow", String(Math.round(live.shown)));
+  }
+
+  function animate() {
+    tick();
+    requestAnimationFrame(animate);
+  }
+  requestAnimationFrame(animate);
+  // Riserva: se il browser sospende requestAnimationFrame, un timer aggiorna comunque la barra.
+  setInterval(() => {
+    if (Date.now() - live.lastFrame > 500) tick();
+  }, 250);
+
+  // Stato in diretta di un controllo su un browser: pending, running, passed, failed, skipped (o null se non in corso).
+  function liveStateOf(info, t, b) {
+    if (!info || !info.browsers.includes(b) || !t.key) return null;
+    const s = info.progress[b] && info.progress[b].tests[t.key];
+    return s || "pending";
   }
 
   /* ---------- Render ---------- */
@@ -396,6 +565,7 @@
     }
 
     const d = viewData(s);
+    const info = liveInfo(); // null se non c'è un'esecuzione in corso
     const ok = d.status === "passed";
     const byFeature = {};
     const listed = state.priority === "all" ? d.tests : d.tests.filter((t) => priorityOf(t) === state.priority);
@@ -436,12 +606,23 @@
               <ul>
                 ${tests
                   .map((t) => {
-                    const { st, ms } = renderStatus(t);
-                    return `<li class="qlp-t-${esc(st)}">
-                      <span class="qlp-icon" aria-label="${esc(st)}">${STATUS_ICON[st] || "?"}</span>
+                    let { st, ms } = renderStatus(t);
+                    // Durante un'esecuzione: stato in diretta del controllo (sui browser coinvolti).
+                    let liveRow = null;
+                    if (info) {
+                      const states = (state.view === "all" ? info.browsers : [state.view]).map((b) => liveStateOf(info, t, b)).filter(Boolean);
+                      if (states.length) {
+                        liveRow = states.includes("running") ? "running" : states.includes("pending") ? "pending" : null;
+                        if (!liveRow) st = states.includes("failed") ? "failed" : states.includes("skipped") ? "skipped" : "passed";
+                      }
+                    }
+                    const rowClass = liveRow ? `qlp-t-${liveRow}` : `qlp-t-${esc(st)}`;
+                    const icon = liveRow === "running" ? '<span class="qlp-spin" aria-hidden="true"></span>' : liveRow === "pending" ? "○" : STATUS_ICON[st] || "?";
+                    return `<li class="${rowClass}">
+                      <span class="qlp-icon" aria-label="${esc(liveRow || st)}">${icon}</span>
                       <span class="qlp-name">${esc(titleOf(t))}${t.priority ? ` ${renderPriority(priorityOf(t))}` : ""}</span>
-                      ${state.view === "all" ? renderBrowsers(t) : ""}
-                      <span class="qlp-dur">${seconds(ms)}</span>
+                      ${state.view === "all" ? renderBrowsers(t, info) : ""}
+                      <span class="qlp-dur">${liveRow ? "—" : seconds(ms)}</span>
                     </li>`;
                   })
                   .join("")}
@@ -458,7 +639,7 @@
         <div class="qlp-actions">
           ${renderButton()}
         </div>
-        ${renderProgress()}
+        ${renderLiveProgress()}
         ${state.message ? `<p class="qlp-message qlp-message-${state.messageKind}" role="status">${esc(state.message)}</p>` : ""}
         ${body}
       </div>`;
@@ -498,21 +679,12 @@
     return `<button type="button" class="qlp-run" ${disabled ? "disabled" : ""}>${esc(label)}</button>`;
   }
 
-  function renderProgress() {
-    if (state.phase === "idle") return "";
-    const keys = ["starting", "queued", "in_progress", "refreshing"];
-    const current = keys.indexOf(state.phase);
-    return `<ol class="qlp-progress">${keys
-      .map((key, i) => {
-        const text = key === "queued" && state.waiting ? T.waiting : T.steps[key];
-        return `<li class="${i < current ? "qlp-done" : i === current ? "qlp-now" : ""}">${esc(text)}</li>`;
-      })
-      .join("")}</ol>`;
-  }
+
 
   /* ---------- Avvio e attesa dei test ---------- */
 
   async function startRun() {
+    resetLive(Date.now() - 10000);
     state.phase = "starting";
     state.message = null;
     state.justUpdated = false;
@@ -547,6 +719,8 @@
   async function follow(since) {
     if (state.following) return; // la stiamo già seguendo
     state.following = true;
+    if (state.phase !== "starting") resetLive(since); // dopo un clic è già stato azzerato in startRun
+    live.since = since;
     const deadline = Date.now() + MAX_WAIT_MS;
     state.phase = "queued";
     render();
@@ -590,6 +764,13 @@
       }
       await new Promise((r) => setTimeout(r, POLL_MS));
     }
+    // Lasciamo vedere la barra arrivare al 100% prima di mostrare i risultati.
+    live.target = 100;
+    await new Promise((resolve) => {
+      const giveUp = Date.now() + 4000;
+      const wait = () => (live.shown >= 99.5 || Date.now() > giveUp ? setTimeout(resolve, 700) : requestAnimationFrame(wait));
+      wait();
+    });
     state.phase = "idle";
     state.justUpdated = true;
     state.messageKind = "info";

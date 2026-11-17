@@ -30,6 +30,8 @@ for (const r of results) {
   const title = r.name; // il nome leggibile impostato con [AllureName] o AllureApi.SetTestName
   const t = byTitle.get(title) ?? {
     title,
+    // Chiave stabile del test (classe, metodo e dati): la stessa usata dall'avanzamento in diretta.
+    key: label(r, "test_key"),
     // Nome del metodo C#, es. "MenuItemOpensExpectedPage" (senza firma dei parametri).
     method: r.fullName?.replace(/\(.*\)$/, "").split(".").pop() ?? null,
     feature: label(r, "feature"),

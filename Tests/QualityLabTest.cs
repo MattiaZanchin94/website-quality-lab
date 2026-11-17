@@ -42,13 +42,20 @@ public abstract class QualityLabTest : PageTest
     protected string ActualBrowser =>
         PlaywrightSettingsProvider.LaunchOptions?.Channel is { Length: > 0 } channel ? channel : BrowserName;
 
+    /// <summary>Identificativo stabile del test (classe, metodo e dati), uguale su tutti i browser.</summary>
+    protected static string TestKey => TestContext.CurrentContext.Test.FullName;
+
     [SetUp]
-    public void TagBrowser()
+    public async Task TagBrowser()
     {
         // Il browser diventa un parametro del test: in Allure lo stesso test su
         // più browser risulta come esecuzioni distinte, ognuna con il suo storico.
         AllureApi.AddTestParameter("Browser", ActualBrowser);
         AllureApi.AddLabel("browser", ActualBrowser);
+        // La chiave serve alla pagina Playground per collegare l'avanzamento in diretta ai risultati.
+        AllureApi.AddLabel("test_key", TestKey);
+
+        await LiveProgress.ReportAsync(ActualBrowser, TestKey, "running");
     }
 
     // Il CAPTCHA può comparire in qualsiasi momento, non solo all'apertura della pagina
@@ -67,7 +74,22 @@ public abstract class QualityLabTest : PageTest
     }
 
     [TearDown]
-    public void MarkBlockedTestsAsNotVerifiable()
+    public async Task FinishTest()
+    {
+        MarkBlockedTestsAsNotVerifiable();
+        await LiveProgress.ReportAsync(ActualBrowser, TestKey, LiveStatus());
+    }
+
+    // Esito per l'avanzamento in diretta, dopo l'eventuale correzione per il CAPTCHA.
+    private static string LiveStatus() =>
+        TestExecutionContext.CurrentContext.CurrentResult.ResultState.Status switch
+        {
+            TestStatus.Passed => "passed",
+            TestStatus.Skipped => "skipped",
+            _ => "failed",
+        };
+
+    private void MarkBlockedTestsAsNotVerifiable()
     {
         // Se il test è fallito mentre (o dopo che) l'hosting mostrava un CAPTCHA, non è un errore del sito:
         // trasformiamo l'esito in "ignorato", con il motivo. Assert.Ignore qui non basterebbe

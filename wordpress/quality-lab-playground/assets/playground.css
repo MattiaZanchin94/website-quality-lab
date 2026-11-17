@@ -187,3 +187,32 @@
 /* Avviso evidenziato: es. pulsante premuto mentre una verifica era già in corso. */
 .qlp-message-warning { padding: 8px 12px; border-radius: 8px; background: #fff7e6; color: #8a5300; }
 .qlp-error, .qlp-loading { color: var(--qlp-muted); }
+
+/* ---------- Avanzamento in diretta ---------- */
+.qlp-live { margin: -8px 0 20px; }
+.qlp-live-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 14px; margin-bottom: 6px; }
+.qlp-live-phase { font-weight: 600; }
+.qlp-live-pct { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--qlp-accent); }
+.qlp-live-track { height: 10px; border-radius: 999px; background: #e8eefc; overflow: hidden; }
+.qlp-live-fill { display: block; height: 100%; border-radius: 999px; background: var(--qlp-accent); }
+.qlp-live-now { margin: 8px 0 0; font-size: 13px; color: var(--qlp-muted); display: flex; align-items: center; gap: 8px; }
+
+/* Controllo in esecuzione: indicatore che ruota; in attesa: cerchio vuoto e testo attenuato. */
+.qlp-t-running .qlp-icon, .qlp-t-pending .qlp-icon { color: var(--qlp-accent); }
+.qlp-t-pending .qlp-name { color: var(--qlp-muted); }
+.qlp-t-running .qlp-name { font-weight: 600; }
+.qlp-spin {
+  display: inline-block; width: 12px; height: 12px; border-radius: 50%;
+  border: 2px solid #c7d4f5; border-top-color: var(--qlp-accent); vertical-align: -1px;
+  animation: qlp-rotate 0.8s linear infinite;
+}
+.qlp-pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--qlp-accent); flex-shrink: 0; animation: qlp-pulse 1.2s infinite; }
+@keyframes qlp-rotate { to { transform: rotate(360deg); } }
+
+/* Badge dei browser durante un'esecuzione */
+.qlp-b-pending { color: var(--qlp-muted); background: transparent; box-shadow: inset 0 0 0 1px var(--qlp-border); }
+.qlp-b-running { color: #fff; background: var(--qlp-accent); animation: qlp-pulse 1.2s infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .qlp-spin, .qlp-pulse, .qlp-b-running, .qlp-ok .qlp-dot { animation: none; }
+}

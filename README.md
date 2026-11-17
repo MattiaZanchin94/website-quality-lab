@@ -117,6 +117,7 @@ dotnet test --filter TestCategory=Smoke
 ## Design notes
 
 - **Plain-language results.** Test names are written for non-technical readers, so the website shows sentences like “The site is reachable and loads correctly” instead of method names.
+- **Live progress.** During a run each test reports *started / passed / failed* to the WordPress plugin (`Tests/LiveProgress.cs`, authenticated with a shared secret). The Playground shows which check is running on which browser and a progress bar that moves continuously but never runs ahead of the real progress or goes backwards. Reporting is fire-and-forget: if it fails, the tests are unaffected.
 - **Order from data, not markup.** The Playground page lists checks by priority (smoke first, then severity, then menu position), computed from test metadata in `summary.json`.
 - **One source of truth for the menu.** Navigation tests are generated with `[TestCaseSource]` from a single ordered array: updating the menu means editing one line.
 - **Security of the run button.** The GitHub token lives only in `wp-config.php`; the browser talks to WordPress, never to GitHub. A global cooldown and a check for runs already in progress prevent abuse.

@@ -74,6 +74,11 @@ jobs:
       - name: Run E2E tests
         id: tests
         continue-on-error: true
+        env:
+          # Avanzamento in diretta sulla pagina Playground (vedi Tests/LiveProgress.cs).
+          # Se il secret non è configurato, l'invio è disattivato e i test girano normalmente.
+          QLP_PROGRESS_URL: https://mattiazanchin.com/wp-json/quality-lab/v1/progress
+          QLP_PROGRESS_KEY: ${{ secrets.QLP_PROGRESS_KEY }}
         run: >
           dotnet test --configuration Release --no-build
           --logger "console;verbosity=normal"
