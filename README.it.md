@@ -20,7 +20,7 @@ flowchart LR
     S["Ogni ora<br/>push su main"] --> GA
     subgraph GA["GitHub Actions"]
         direction TB
-        T1["Test · Chromium"] & T2["Test · Firefox"] & T3["Test · WebKit"] --> P["Pubblicazione<br/>Allure + summary.json"]
+        T1["Test · Chromium"] & T2["Test · Firefox"] & T3["Test · WebKit"] --> P["Pubblicazione<br/>summary.json"]
     end
     P -- "summary.json" --> GP["GitHub Pages"]
     GP -- "fetch" --> V
@@ -29,7 +29,7 @@ flowchart LR
 
 1. I test **Playwright + NUnit** (C#) aprono il sito reale e si comportano come un utente: aprono pagine, cliccano le voci del menu, leggono gli articoli.
 2. **GitHub Actions** li esegue ogni ora, a ogni push e su richiesta, su **Chromium, Firefox e WebKit** in parallelo.
-3. Un job di pubblicazione unisce i risultati, genera il report **Allure 3** e pubblica un `summary.json` compatto su **GitHub Pages**.
+3. Un job di pubblicazione unisce i risultati dei tre browser e pubblica un `summary.json` compatto su **GitHub Pages**.
 4. Un piccolo **plugin WordPress** mostra quel riepilogo nella pagina Playground e permette ai visitatori di avviare i test, passando da un proxy lato server che tiene privato il token GitHub e consente al massimo un'esecuzione ogni 10 minuti.
 
 ## Cosa viene verificato
@@ -53,7 +53,7 @@ I controlli **smoke** coprono l'essenziale e sono i primi a segnalare un problem
 | Linguaggio | C# · .NET 10 |
 | Automazione del browser | Playwright per .NET |
 | Test framework | NUnit 4 |
-| Reportistica | Allure 3 · Job summary di GitHub Actions |
+| Reportistica | Job summary di GitHub Actions |
 | CI/CD | GitHub Actions (matrice di browser, esecuzioni programmate e su richiesta) |
 | Pubblicazione dei risultati | GitHub Pages |
 | Integrazione con il sito | Plugin WordPress (PHP, REST API, JavaScript) |
@@ -69,16 +69,14 @@ I controlli **smoke** coprono l'essenziale e sono i primi a segnalare un problem
 │   ├── NavigationTests.cs            # smoke, generati dalla definizione del menu
 │   ├── ArticleTests.cs               # regression
 │   └── PlaygroundTests.cs            # regression: la pagina che mostra questi risultati
-├── scripts/summary.mjs               # risultati Allure → summary.json per il sito
+├── scripts/summary.mjs               # risultati dei test → summary.json per il sito
 ├── wordpress/quality-lab-playground/ # plugin WordPress (shortcode + proxy REST)
-├── allureConfig.json                 # impostazioni dell'adapter Allure per .NET
-├── allurerc.mjs                      # impostazioni del report Allure 3
 └── QualityLab.csproj
 ```
 
 ## Esecuzione in locale
 
-Requisiti: [.NET 10 SDK](https://dotnet.microsoft.com/download) e, per il report HTML, [Node.js](https://nodejs.org) LTS.
+Requisiti: [.NET 10 SDK](https://dotnet.microsoft.com/download).
 
 ```bash
 # Build e installazione dei browser (solo la prima volta)
@@ -93,20 +91,15 @@ BROWSER=webkit dotnet test
 
 # Solo i controlli smoke
 dotnet test --filter TestCategory=Smoke
-
-# Generazione e apertura del report Allure
-npm ci
-npm run report -- --clean && npx allure open
 ```
 
 ## Scelte di progettazione
 
-- **Risultati in linguaggio semplice.** I nomi dei test sono scritti per chi non è tecnico, con `[AllureName]` e `AllureApi.SetTestName`: gli stessi nomi compaiono in Allure e sul sito.
+- **Risultati in linguaggio semplice.** I nomi dei test sono scritti per chi non è tecnico: sul sito compaiono frasi come “Il sito è raggiungibile e si carica correttamente” invece dei nomi dei metodi.
 - **L'ordine nasce dai dati, non dall'HTML.** La pagina Playground elenca i controlli per priorità (prima gli smoke, poi la severità, poi la posizione nel menu), calcolata dai metadati dei test in `summary.json`.
 - **Il menu è definito una volta sola.** I test di navigazione sono generati con `[TestCaseSource]` da un unico array ordinato: per aggiornare il menu basta modificare una riga.
 - **Sicurezza del pulsante.** Il token GitHub sta solo in `wp-config.php`; il browser parla con WordPress, mai con GitHub. Un cooldown globale e il controllo delle esecuzioni già in corso evitano abusi.
 - **I test non si avviano da soli.** Il test della Playground verifica che il pulsante esista ma non lo clicca, altrimenti ogni esecuzione oraria ne avvierebbe un'altra.
-- **Privacy del report.** Il report Allure completo resta un artifact del workflow; è pubblico solo il riepilogo che serve al sito.
 
 ## Autore
 
