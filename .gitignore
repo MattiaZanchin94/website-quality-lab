@@ -485,3 +485,4 @@ $RECYCLE.BIN/
 node_modules/
 allure-report/
 allure-results/
+history.jsonl

@@ -1,0 +1,102 @@
+name: E2E tests
+
+# Chi ha avviato l'esecuzione compare nel titolo, es. "E2E · website" o "E2E · schedule".
+run-name: E2E · ${{ github.event_name == 'workflow_dispatch' && inputs.source || github.event_name }}
+
+on:
+  # Ogni ora, al minuto 17 (evitiamo lo scoccare dell'ora, quando GitHub è più carico).
+  schedule:
+    - cron: "17 * * * *"
+  # A ogni push su main.
+  push:
+    branches: [main]
+  # Su richiesta: dal pulsante "Run workflow" di GitHub o, nella Fase 5, dal sito WordPress.
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "Chi ha avviato i test (manual, website)"
+        required: false
+        default: manual
+
+# Mai due esecuzioni in parallelo: una nuova richiesta aspetta che finisca quella in corso.
+concurrency:
+  group: e2e-tests
+  cancel-in-progress: false
+
+# Permessi minimi: leggere il codice e pubblicare su GitHub Pages.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    env:
+      PAGES_URL: https://zancus.github.io/website-quality-lab
+      RESULTS_DIR: bin/Release/net10.0/allure-results
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - name: Build
+        run: dotnet build --configuration Release
+
+      - name: Install Playwright browser
+        run: pwsh bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+
+      # continue-on-error: anche se un test fallisce vogliamo pubblicare il report.
+      # Lo stato reale del job viene impostato nell'ultimo step.
+      - name: Run E2E tests
+        id: tests
+        continue-on-error: true
+        run: dotnet test --configuration Release --no-build --logger "console;verbosity=normal"
+
+      - name: Install Allure 3
+        run: npm ci
+
+      # Recupera lo storico pubblicato in precedenza, per i trend nel report.
+      # Alla primissima esecuzione non esiste ancora: va bene così.
+      - name: Download Allure history
+        run: curl -fsSL "$PAGES_URL/history.jsonl" -o history.jsonl || echo "Nessuno storico precedente"
+
+      - name: Generate Allure report
+        run: npx allure generate "$RESULTS_DIR" --clean
+
+      - name: Write summary.json
+        env:
+          RUN_TRIGGER: ${{ github.event_name == 'workflow_dispatch' && inputs.source || github.event_name }}
+        run: |
+          node scripts/summary.mjs "$RESULTS_DIR" allure-report/summary.json
+          cp history.jsonl allure-report/history.jsonl
+
+      - name: Upload report
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: allure-report
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
+
+      - name: Fail the job if tests failed
+        if: steps.tests.outcome == 'failure'
+        run: |
+          echo "::error::Uno o più test E2E sono falliti. Vedi il report: $PAGES_URL"
+          exit 1
