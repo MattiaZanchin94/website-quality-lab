@@ -50,6 +50,29 @@ public abstract class QualityLabTest : PageTest
     }
 
     // ---------------------------------------------------------------------
+    // Contenuto visibile della pagina
+    // ---------------------------------------------------------------------
+
+    /// <summary>
+    /// Verifica che la pagina mostri davvero il suo contenuto, come lo vede il visitatore:
+    /// il titolo principale (H1) visibile con il testo atteso e un'area di testo non vuota.
+    /// Indirizzo e titolo della scheda non bastano: WordPress li genera anche per una pagina vuota.
+    /// </summary>
+    /// <param name="heading">Testo atteso dell'H1 (maiuscole/minuscole ignorate: il tema le cambia con il CSS).</param>
+    /// <param name="content">Area del testo; se non indicata, l'area principale della pagina (main).</param>
+    /// <param name="minChars">Quanti caratteri di testo deve contenere almeno l'area.</param>
+    protected async Task ExpectPageShowsContentAsync(string heading, ILocator? content = null, int minChars = 200)
+    {
+        var h1 = Page.GetByRole(AriaRole.Heading, new() { Level = 1 }).Filter(new() { Visible = true }).First;
+        await Expect(h1).ToHaveTextAsync(heading, new() { IgnoreCase = true });
+
+        var area = content ?? Page.GetByRole(AriaRole.Main);
+        await Expect(area).ToBeVisibleAsync();
+        // Expect riprova finché il testo arriva: utile anche per i contenuti caricati via JavaScript.
+        await Expect(area).ToHaveTextAsync(new Regex($@"^[\s\S]{{{minChars},}}$"));
+    }
+
+    // ---------------------------------------------------------------------
     // Protezione anti-bot dell'hosting (SiteGround)
     // ---------------------------------------------------------------------
     // A volte SiteGround non mostra la pagina ma una verifica anti-bot:

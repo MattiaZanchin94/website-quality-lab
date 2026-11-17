@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Quality Lab Playground
  * Description: Mostra i risultati dei test E2E del sito e permette ai visitatori di avviarli. Shortcode: [quality_lab_playground]
- * Version:     1.4.1
+ * Version:     1.5.0
  * Author:      Mattia Zanchin
  * License:     MIT
  *
@@ -12,7 +12,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const QLP_VERSION     = '1.4.1';
+const QLP_VERSION     = '1.5.0';
 const QLP_REPO        = 'Zancus/website-quality-lab';
 const QLP_WORKFLOW    = 'e2e-tests.yml';
 const QLP_PAGES_URL   = 'https://zancus.github.io/website-quality-lab';
@@ -47,20 +47,23 @@ function qlp_github_request( string $method, string $path, ?array $body = null )
 	return wp_remote_request( 'https://api.github.com/repos/' . QLP_REPO . $path, $args );
 }
 
-/** Ultima esecuzione del workflow, ridotta ai campi che servono alla pagina. */
+/** Ultima esecuzione del workflow (più quante sono ancora attive), ridotta ai campi che servono alla pagina. */
 function qlp_latest_run(): ?array {
 	$cached = get_transient( 'qlp_latest_run' );
 	if ( false !== $cached ) {
 		return $cached ?: null;
 	}
 
-	$response = qlp_github_request( 'GET', '/actions/workflows/' . QLP_WORKFLOW . '/runs?per_page=1' );
+	$response = qlp_github_request( 'GET', '/actions/workflows/' . QLP_WORKFLOW . '/runs?per_page=5' );
 	if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
 		return null;
 	}
 
 	$data = json_decode( wp_remote_retrieve_body( $response ), true );
-	$run  = $data['workflow_runs'][0] ?? null;
+	$runs = $data['workflow_runs'] ?? array();
+	$run  = $runs[0] ?? null;
+	// Esecuzioni non ancora finite (in corso o in coda): se sono più di una, l'ultima aspetta in coda.
+	$active = count( array_filter( $runs, function ( $r ) { return 'completed' !== $r['status']; } ) );
 	$out  = $run ? array(
 		'id'         => $run['id'],
 		'status'     => $run['status'],      // queued | in_progress | completed
@@ -69,6 +72,7 @@ function qlp_latest_run(): ?array {
 		'createdAt'  => $run['created_at'],
 		'updatedAt'  => $run['updated_at'],
 		'url'        => $run['html_url'],
+		'activeRuns' => $active,
 	) : array();
 
 	set_transient( 'qlp_latest_run', $out, QLP_STATUS_TTL );

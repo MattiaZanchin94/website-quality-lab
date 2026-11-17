@@ -184,4 +184,6 @@
 .qlp-progress .qlp-now::after { content: " …"; }
 
 .qlp-message { margin: -8px 0 20px; font-size: 14px; }
+/* Avviso evidenziato: es. pulsante premuto mentre una verifica era già in corso. */
+.qlp-message-warning { padding: 8px 12px; border-radius: 8px; background: #fff7e6; color: #8a5300; }
 .qlp-error, .qlp-loading { color: var(--qlp-muted); }

@@ -24,8 +24,12 @@ public class WebsiteAvailabilityTests : QualityLabTest
         Assert.That(response, Is.Not.Null);
         Assert.That(response!.Ok, Is.True, $"La home page ha risposto con HTTP {response.Status}");
 
-        // Il controllo decisivo: alla fine deve comparire il sito vero, non la pagina di verifica.
+        // Deve comparire il sito vero, non la pagina di verifica...
         await Expect(Page).ToHaveTitleAsync(new Regex("Mattia Zanchin"), new() { Timeout = 15_000 });
         await Expect(Page.Locator("header")).ToBeVisibleAsync();
+
+        // ...e la home deve mostrare davvero il suo contenuto: il titolo principale e il testo.
+        // È il controllo più importante: è la prima pagina che vede chi arriva sul sito.
+        await ExpectPageShowsContentAsync("Software testing");
     }
 }

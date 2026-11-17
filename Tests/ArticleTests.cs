@@ -38,10 +38,9 @@ public class ArticleTests : QualityLabTest
 
         // La pagina aperta è proprio quell'articolo...
         await Expect(Page).ToHaveURLAsync(expectedUrl!);
-        await Expect(Page.GetByRole(AriaRole.Heading, new() { Level = 1 }))
-            .ToHaveTextAsync(expectedTitle);
 
-        // ...e ha davvero un contenuto, non una pagina vuota.
-        await Expect(Page.Locator(".entry-content")).Not.ToBeEmptyAsync();
+        // ...e mostra davvero titolo e testo dell'articolo: H1 uguale al titolo nella lista
+        // e corpo dell'articolo visibile, con un testo vero (almeno 500 caratteri).
+        await ExpectPageShowsContentAsync(expectedTitle, Page.Locator(".entry-content"), minChars: 500);
     }
 }

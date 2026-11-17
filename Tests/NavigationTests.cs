@@ -12,17 +12,18 @@ namespace QualityLab.Tests;
 [AllureSeverity(Blocker)]
 public class NavigationTests : QualityLabTest
 {
-    // Le voci del menu principale, nell'ordine in cui compaiono sul sito,
-    // con il nome che hanno nella versione inglese (/en/).
+    // Le voci del menu principale, nell'ordine in cui compaiono sul sito, con:
+    //   - il titolo principale (H1) che la pagina deve mostrare (la Home ha un titolo diverso dalla voce);
+    //   - il nome della voce nella versione inglese (/en/).
     // È l'unico punto da aggiornare quando il menu cambia.
-    private static readonly (string Label, string Path, string LabelEn)[] MainMenu =
+    private static readonly (string Label, string Path, string Heading, string LabelEn)[] MainMenu =
     [
-        ("Home", "/", "Home"),
-        ("Software testing", "/software-testing/", "Software testing"),
-        ("Origini", "/origini/", "Origins"),
-        ("Carriera", "/carriera/", "Career"),
-        ("Articoli tecnici", "/category/articoli-tecnici/", "Technical articles"),
-        ("Playground", "/playground/", "Playground"),
+        ("Home", "/", "Software testing", "Home"),
+        ("Software testing", "/software-testing/", "Software testing", "Software testing"),
+        ("Origini", "/origini/", "Origini", "Origins"),
+        ("Carriera", "/carriera/", "Carriera", "Career"),
+        ("Articoli tecnici", "/category/articoli-tecnici/", "Articoli tecnici", "Technical articles"),
+        ("Playground", "/playground/", "Playground", "Playground"),
     ];
 
     // [TestCaseSource] genera un test per ogni voce: stessa logica, dati diversi
@@ -51,7 +52,11 @@ public class NavigationTests : QualityLabTest
         await menuLink.ClickAsync();
         await SkipIfBlockedByBotProtectionAsync();
 
+        // 1) Siamo sulla pagina giusta: indirizzo e titolo della scheda del browser.
         await Expect(Page).ToHaveURLAsync(BaseUrl + expectedPath);
         await Expect(Page).ToHaveTitleAsync(new Regex($"^{Regex.Escape(menuLabel)} - "));
+
+        // 2) La pagina mostra davvero titolo e testo, come li vede il visitatore.
+        await ExpectPageShowsContentAsync(MainMenu[index].Heading);
     }
 }

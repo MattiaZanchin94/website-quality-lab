@@ -72,7 +72,9 @@
         in_progress: "Verifica del sito in corso (circa 2–3 minuti)",
         refreshing: "Pubblicazione dei risultati",
       },
-      msgFollowing: "Qualcuno ha appena avviato i controlli: seguiamo quella verifica.",
+      msgFollowing: "C'è già una verifica in corso: non ne avviamo un'altra. Il pulsante tornerà disponibile quando sarà finita; intanto la seguiamo qui sotto.",
+      msgAutoFollow: "È appena partita una verifica: la seguiamo in diretta qui sotto.",
+      waiting: "In coda: c'è un'altra verifica in corso, questa partirà subito dopo",
       msgCooldown: (min) => `I controlli sono stati eseguiti da poco. Potrai riavviarli tra ${min} minuti.`,
       msgError: "Non è stato possibile avviare i controlli. Riprova più tardi.",
       msgSlow: "La verifica sta richiedendo più del previsto. Riprova a ricaricare la pagina tra qualche minuto.",
@@ -136,7 +138,9 @@
         in_progress: "Checking the site (about 2–3 minutes)",
         refreshing: "Publishing the results",
       },
-      msgFollowing: "Someone has just started the checks: we're following that run.",
+      msgFollowing: "A run is already in progress, so we didn't start another one. The button will be available again when it ends; meanwhile we're following it below.",
+      msgAutoFollow: "A run has just started: we're following it live below.",
+      waiting: "Queued: another run is in progress, this one will start right after",
       msgCooldown: (min) => `The checks ran a moment ago. You can start them again in ${min} minutes.`,
       msgError: "The checks couldn't be started. Please try again later.",
       msgSlow: "The run is taking longer than expected. Try reloading the page in a few minutes.",
@@ -153,6 +157,9 @@
     view: "all", // scheda selezionata: "all" oppure un browser (chromium, msedge, firefox, webkit)
     priority: "all", // filtro dei controlli: "all", "blocker" oppure "major"
     message: null,
+    messageKind: "info", // "info" oppure "warning" (avviso evidenziato)
+    following: false, // true mentre la pagina segue un'esecuzione
+    waiting: false, // true se l'esecuzione seguita è in coda dietro un'altra
     justUpdated: false,
   };
 
@@ -452,7 +459,7 @@
           ${renderButton()}
         </div>
         ${renderProgress()}
-        ${state.message ? `<p class="qlp-message">${esc(state.message)}</p>` : ""}
+        ${state.message ? `<p class="qlp-message qlp-message-${state.messageKind}" role="status">${esc(state.message)}</p>` : ""}
         ${body}
       </div>`;
 
@@ -496,7 +503,10 @@
     const keys = ["starting", "queued", "in_progress", "refreshing"];
     const current = keys.indexOf(state.phase);
     return `<ol class="qlp-progress">${keys
-      .map((key, i) => `<li class="${i < current ? "qlp-done" : i === current ? "qlp-now" : ""}">${esc(T.steps[key])}</li>`)
+      .map((key, i) => {
+        const text = key === "queued" && state.waiting ? T.waiting : T.steps[key];
+        return `<li class="${i < current ? "qlp-done" : i === current ? "qlp-now" : ""}">${esc(text)}</li>`;
+      })
       .join("")}</ol>`;
   }
 
@@ -520,11 +530,14 @@
       return follow(new Date(body.startedAt).getTime() - 10000);
     }
     if (body.reason === "running") {
+      // Il pulsante era ancora visibile, ma c'era già un'esecuzione: avvisiamo e la seguiamo.
       state.message = T.msgFollowing;
+      state.messageKind = "warning";
       return follow(new Date(body.run.createdAt).getTime() - 1000);
     }
 
     state.phase = "idle";
+    state.messageKind = "warning";
     state.message = body.reason === "cooldown" ? T.msgCooldown(Math.ceil(body.cooldownRemaining / 60)) : T.msgError;
     state.status = await loadStatus();
     render();
@@ -532,6 +545,8 @@
 
   // Segue l'esecuzione creata dopo "since" finché non termina, poi ricarica i risultati.
   async function follow(since) {
+    if (state.following) return; // la stiamo già seguendo
+    state.following = true;
     const deadline = Date.now() + MAX_WAIT_MS;
     state.phase = "queued";
     render();
@@ -544,15 +559,22 @@
 
       if (run.status === "completed") {
         state.phase = "refreshing";
+        state.waiting = false;
         render();
         await refreshSummary(run);
+        state.following = false;
         return;
       }
       state.phase = run.status === "in_progress" ? "in_progress" : "queued";
+      // In coda dietro un'altra esecuzione (GitHub ne esegue una alla volta).
+      state.waiting = state.phase === "queued" && (run.activeRuns || 1) > 1;
       render();
     }
 
     state.phase = "idle";
+    state.following = false;
+    state.waiting = false;
+    state.messageKind = "warning";
     state.message = T.msgSlow;
     render();
   }
@@ -570,6 +592,7 @@
     }
     state.phase = "idle";
     state.justUpdated = true;
+    state.messageKind = "info";
     state.message = run.conclusion === "success" ? T.msgDone : T.msgDoneKo;
     state.status = await loadStatus().catch(() => state.status);
     render();
@@ -587,5 +610,23 @@
     if (status && status.run && status.run.status !== "completed") {
       follow(new Date(status.run.createdAt).getTime() - 1000);
     }
+
+    // Mentre la pagina è aperta controlliamo ogni 30 secondi (e quando si torna sulla scheda del browser):
+    // se nel frattempo è partita un'esecuzione, il pulsante si blocca e la pagina la segue.
+    async function checkForNewRun() {
+      if (state.following || state.phase !== "idle" || document.visibilityState !== "visible") return;
+      const st = await loadStatus().catch(() => null);
+      if (!st) return;
+      state.status = st;
+      if (st.run && st.run.status !== "completed") {
+        state.message = T.msgAutoFollow;
+        state.messageKind = "info";
+        follow(new Date(st.run.createdAt).getTime() - 1000);
+      } else {
+        render(); // aggiorna il pulsante (es. il conto alla rovescia "Disponibile tra N min")
+      }
+    }
+    setInterval(checkForNewRun, 30000);
+    document.addEventListener("visibilitychange", checkForNewRun);
   })();
 })();
