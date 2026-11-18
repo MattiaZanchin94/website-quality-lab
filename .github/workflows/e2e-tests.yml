@@ -23,6 +23,11 @@ on:
         required: false
         default: all
         options: [all, desktop, mobile, chromium, msedge, firefox, webkit, iphone, android, ipad, fold]
+      test_alert:
+        description: "Manda un messaggio di prova su Telegram (per verificare la configurazione degli avvisi)"
+        type: boolean
+        required: false
+        default: false
 
 # Mai due esecuzioni in parallelo: una nuova richiesta aspetta che finisca quella in corso.
 concurrency:
@@ -206,3 +211,16 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deploy
         uses: actions/deploy-pages@v4
+
+      # Avviso su Telegram quando i controlli smoke cambiano stato (verde → rosso, rosso → verde).
+      # Token e chat id sono secrets del repository: se mancano, il passaggio non fa nulla.
+      # continue-on-error: un problema con Telegram non deve far fallire la pubblicazione.
+      - name: Telegram alert
+        if: ${{ always() }}
+        continue-on-error: true
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ALERT_TEST: ${{ inputs.test_alert && 'true' || 'false' }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node scripts/notify.mjs public/summary.json previous-summary.json

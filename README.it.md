@@ -89,6 +89,7 @@ I controlli **smoke** coprono l'essenziale e sono i primi a segnalare un problem
 │   ├── ArticleTests.cs               # regression
 │   └── PlaygroundTests.cs            # regression: la pagina che mostra questi risultati
 ├── scripts/summary.mjs               # risultati dei test → summary.json per il sito
+├── scripts/notify.mjs                # avviso su Telegram quando i controlli smoke cambiano stato
 ├── wordpress/quality-lab-playground/ # plugin WordPress (shortcode + proxy REST)
 └── QualityLab.csproj
 ```
@@ -128,6 +129,7 @@ dotnet test --filter TestCategory=Smoke
 - **Il menu è definito una volta sola.** I test di navigazione sono generati con `[TestCaseSource]` da un unico array ordinato: per aggiornare il menu basta modificare una riga.
 - **Sicurezza del pulsante.** Il token GitHub sta solo in `wp-config.php`; il browser parla con WordPress, mai con GitHub. Un cooldown globale e il controllo delle esecuzioni già in corso evitano abusi.
 - **La protezione anti-bot non è un errore del sito.** Se la protezione anti-bot dell'hosting mostra un CAPTCHA al browser di test, il controllo viene segnato come *non verificabile* (`Assert.Ignore`, con il motivo) invece che fallito. I test non provano mai a superare un CAPTCHA.
+- **Avvisi solo quando qualcosa cambia.** Dopo ogni esecuzione `scripts/notify.mjs` confronta i controlli smoke con l'esecuzione precedente e manda un messaggio su Telegram solo quando passano da verdi a rossi, o tornano verdi, così un problema che dura tutta la notte non manda un messaggio ogni ora. I blocchi da CAPTCHA non contano. Token del bot e chat id sono secrets del repository; un avvio manuale con *test_alert* manda un messaggio di prova.
 - **I test non si avviano da soli.** Il test della Playground verifica che il pulsante esista ma non lo clicca, altrimenti ogni esecuzione oraria ne avvierebbe un'altra.
 
 ## Autore
