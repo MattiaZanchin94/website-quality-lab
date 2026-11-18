@@ -108,8 +108,12 @@
       },
       other: "Altro",
       runNow: "▶ Avvia i controlli ora",
-      running: "Controlli in corso…",
-      availableIn: (min) => `Disponibile tra ${min} min`,
+      // Il Playground è un campetto: una partita alla volta, poi una pausa per pulire il parquet.
+      running: "🏀 Partita in corso…",
+      availableIn: (min) => `🧹 Pulizia del parquet: libero tra ${min} min`,
+      courtBusy: "🏀 Il campetto è occupato: c'è una partita in corso. Quando finisce, puoi scendere in campo anche tu; intanto puoi seguirla qui sotto.",
+      courtCleaning: (min) =>
+        `🧹 Stanno pulendo il parquet: il campetto torna libero tra ${min === 1 ? "1 minuto" : `${min} minuti`}. Intanto puoi guardare i risultati dell'ultima partita.`,
       live: {
         starting: "Richiesta inviata",
         setup: "Preparazione dei browser",
@@ -128,10 +132,9 @@
         in_progress: "Verifica del sito in corso (circa 2–3 minuti)",
         refreshing: "Pubblicazione dei risultati",
       },
-      msgFollowing: "C'è già una verifica in corso: non ne avviamo un'altra. Il pulsante tornerà disponibile quando sarà finita; intanto la seguiamo qui sotto.",
-      msgAutoFollow: "È appena partita una verifica: la seguiamo in diretta qui sotto.",
+      msgFollowing: "Qualcuno ti ha preceduto: il campetto è occupato da una partita in corso. Quando finisce, puoi scendere in campo anche tu; intanto puoi seguirla qui sotto.",
       waiting: "In coda: c'è un'altra verifica in corso, questa partirà subito dopo",
-      msgCooldown: (min) => `I controlli sono stati eseguiti da poco. Potrai riavviarli tra ${min} minuti.`,
+      msgCooldown: (min) => `🧹 Stanno pulendo il parquet: il campetto torna libero tra ${min === 1 ? "1 minuto" : `${min} minuti`}.`,
       msgError: "Non è stato possibile avviare i controlli. Riprova più tardi.",
       msgSlow: "La verifica sta richiedendo più del previsto. Riprova a ricaricare la pagina tra qualche minuto.",
       msgDone: "Fatto! Ecco i risultati appena ottenuti.",
@@ -229,8 +232,11 @@
       },
       other: "Other",
       runNow: "▶ Run the checks now",
-      running: "Checks in progress…",
-      availableIn: (min) => `Available in ${min} min`,
+      running: "🏀 Game in progress…",
+      availableIn: (min) => `🧹 Mopping the court: free in ${min} min`,
+      courtBusy: "🏀 The court is busy: a game is on. When it ends, you can play too; meanwhile, you can follow it below.",
+      courtCleaning: (min) =>
+        `🧹 They're mopping the court: it's free again in ${min === 1 ? "1 minute" : `${min} minutes`}. Meanwhile, have a look at the results of the last game.`,
       live: {
         starting: "Request sent",
         setup: "Preparing the browsers",
@@ -249,10 +255,9 @@
         in_progress: "Checking the site (about 2–3 minutes)",
         refreshing: "Publishing the results",
       },
-      msgFollowing: "A run is already in progress, so we didn't start another one. The button will be available again when it ends; meanwhile we're following it below.",
-      msgAutoFollow: "A run has just started: we're following it live below.",
+      msgFollowing: "Someone beat you to it: the court is busy with a game. When it ends, you can play too; meanwhile, you can follow it below.",
       waiting: "Queued: another run is in progress, this one will start right after",
-      msgCooldown: (min) => `The checks ran a moment ago. You can start them again in ${min} minutes.`,
+      msgCooldown: (min) => `🧹 They're mopping the court: it's free again in ${min === 1 ? "1 minute" : `${min} minutes`}.`,
       msgError: "The checks couldn't be started. Please try again later.",
       msgSlow: "The run is taking longer than expected. Try reloading the page in a few minutes.",
       msgDone: "Done! Here are the fresh results.",
@@ -907,7 +912,7 @@
               : ""
         }
         ${renderLiveProgress()}
-        ${state.message ? `<p class="qlp-message qlp-message-${state.messageKind}" role="status">${esc(state.message)}</p>` : ""}
+        ${state.message ? `<p class="qlp-message qlp-message-${state.messageKind}" role="status">${esc(state.message)}</p>` : renderCourtNote()}
         ${body}
       </div>`;
 
@@ -935,6 +940,14 @@
         render();
       }),
     );
+  }
+
+  // Pausa di 10 minuti tra una partita e l'altra (limite del plugin): spieghiamo perché il pulsante aspetta.
+  function renderCourtNote() {
+    const st = state.status;
+    if (state.phase !== "idle" || !st || !st.configured || !(st.cooldownRemaining > 0)) return "";
+    if (st.run && st.run.status !== "completed") return "";
+    return `<p class="qlp-message qlp-message-info" role="status">${esc(T.courtCleaning(Math.ceil(st.cooldownRemaining / 60)))}</p>`;
   }
 
   function renderButton() {
@@ -1076,6 +1089,9 @@
 
     // Se un'esecuzione è già in corso quando la pagina si apre, la seguiamo.
     if (status && status.run && status.run.status !== "completed") {
+      // Qualcun altro sta già giocando: lo diciamo e seguiamo la partita in diretta.
+      state.message = T.courtBusy;
+      state.messageKind = "info";
       follow(new Date(status.run.createdAt).getTime() - 1000);
     }
 
@@ -1087,7 +1103,7 @@
       if (!st) return;
       state.status = st;
       if (st.run && st.run.status !== "completed") {
-        state.message = T.msgAutoFollow;
+        state.message = T.courtBusy;
         state.messageKind = "info";
         follow(new Date(st.run.createdAt).getTime() - 1000);
       } else {

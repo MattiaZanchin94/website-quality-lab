@@ -74,7 +74,8 @@ public class PlaygroundTests : QualityLabTest
         // ...e il pulsante avvia i controlli solo su quel browser.
         await Expect(Page.GetByRole(AriaRole.Button, new()
             {
-                NameRegex = new Regex("Avvia i controlli su Firefox|Disponibile tra|Controlli in corso"),
+                // Stati possibili: libero, pausa tra due partite ("pulizia del parquet"), partita in corso.
+                NameRegex = new Regex("Avvia i controlli su Firefox|Pulizia del parquet|Partita in corso"),
             }))
             .ToBeVisibleAsync();
     }
@@ -112,7 +113,7 @@ public class PlaygroundTests : QualityLabTest
         // la pagina apre il proprio dispositivo, es. "Avvia i controlli su iPhone".
         await Expect(Page.GetByRole(AriaRole.Button, new()
             {
-                NameRegex = new Regex("Avvia i controlli (ora|su )|Disponibile tra|Controlli in corso"),
+                NameRegex = new Regex("Avvia i controlli (ora|su )|Pulizia del parquet|Partita in corso"),
             }))
             .ToBeVisibleAsync(new() { Timeout = 15_000 });
     }
