@@ -47,6 +47,8 @@
         "Smartphone e tablet sono emulati: lo stesso motore del browser con schermo, touch e identità di un iPhone 15, di un Pixel 7 (Android), di un Galaxy Z Fold 7 chiuso e di un iPad Pro 11 in verticale e in orizzontale. Non sono dispositivi veri.",
       ],
       deviceLong: { iphone: "iPhone", android: "Android", fold: "Galaxy Fold chiuso", ipad: "iPad verticale", ipadland: "iPad orizzontale" },
+      mobileBadge: "Mobile",
+      mobileFailedOn: (names) => `Non superato su: ${names}. Dettagli nelle schede dei dispositivi.`,
       mobileVisitor: "Stai usando uno smartphone o un tablet: i controlli non girano sul tuo dispositivo, ma su computer di GitHub, che emulano anche smartphone e tablet.",
       matrix: (checks, browsers, devices) =>
         `${checks} controlli, ripetuti su ${browsers.length} browser (${browsers.join(", ")})` +
@@ -137,6 +139,8 @@
         "Phones and tablets are emulated: the same browser engine with the screen, touch and identity of an iPhone 15, a Pixel 7 (Android), a folded Galaxy Z Fold 7 and an iPad Pro 11 in portrait and landscape. They are not real devices.",
       ],
       deviceLong: { iphone: "iPhone", android: "Android", fold: "folded Galaxy Fold", ipad: "iPad portrait", ipadland: "iPad landscape" },
+      mobileBadge: "Mobile",
+      mobileFailedOn: (names) => `Not passed on: ${names}. Details in the device tabs.`,
       mobileVisitor: "You're on a smartphone or tablet: the checks don't run on your device but on GitHub computers, which also emulate phones and tablets.",
       matrix: (checks, browsers, devices) =>
         `${checks} checks, repeated on ${browsers.length} browsers (${browsers.join(", ")})` +
@@ -362,19 +366,29 @@
 
 
 
+  // Accanto a ogni controllo mostriamo solo i browser desktop (Chrome, Edge, Firefox, Safari):
+  // con tutti i dispositivi l'elenco diventerebbe illeggibile. I risultati di smartphone e tablet
+  // sono nelle loro schede; qui compare un solo badge "Mobile" e solo se un dispositivo non ha superato il controllo.
   function renderBrowsers(t, info) {
     if (!t.browsers) return "";
-    return `<span class="qlp-browsers">${Object.keys(BROWSER_NAMES)
+    const desktop = Object.keys(BROWSER_NAMES)
+      .filter((b) => !isDevice(b))
       .filter((b) => b in t.browsers || (info && info.browsers.includes(b)))
       .map((b) => {
         // Durante un'esecuzione mostriamo lo stato in diretta, altrimenti l'ultimo risultato.
         const st = liveStateOf(info, t, b) || t.browsers[b];
         const word = { passed: T.passed, skipped: T.notVerifiable, pending: T.live.pending, running: T.live.running }[st] || T.notPassed;
         const hint = `${T.engines[b]}: ${word}`;
-        return `<span class="qlp-b qlp-b-${esc(st)}${isDevice(b) ? " qlp-b-device" : ""}" title="${esc(hint)}">${BROWSER_NAMES[b]}</span>`;
+        return `<span class="qlp-b qlp-b-${esc(st)}" title="${esc(hint)}">${BROWSER_NAMES[b]}</span>`;
       })
-      .join("")}</span>`;
+      .join("");
+    const failedDevices = DEVICES.filter((b) => ["failed", "broken"].includes(t.browsers[b]));
+    const mobile = failedDevices.length
+      ? `<span class="qlp-b qlp-b-failed qlp-b-device" title="${esc(T.mobileFailedOn(failedDevices.map((b) => T.deviceLong[b] || BROWSER_NAMES[b]).join(", ")))}">${esc(T.mobileBadge)}</span>`
+      : "";
+    return `<span class="qlp-browsers">${desktop}${mobile}</span>`;
   }
+
 
   // Finestra modale "Come funziona?": creata una sola volta e aggiunta a <body>,
   // così non si chiude quando il riquadro viene ridisegnato durante un'esecuzione.
@@ -598,9 +612,21 @@
       .join("")}</div>`;
   }
 
+  // Stato della riga nella vista "tutti": il peggiore tra i browser desktop mostrati accanto,
+  // più gli eventuali fallimenti veri dei dispositivi (segnalati dal badge "Mobile").
+  // Un dispositivo bloccato dal CAPTCHA non rende grigia la riga: lo si vede nella sua scheda.
+  function overallStatus(t) {
+    if (!t.browsers) return t.status;
+    const rank = { passed: 0, skipped: 1, broken: 2, failed: 3 };
+    const relevant = Object.entries(t.browsers)
+      .filter(([b, s]) => !isDevice(b) || s === "failed" || s === "broken")
+      .map(([, s]) => s);
+    return relevant.reduce((worst, s) => ((rank[s] ?? 0) > (rank[worst] ?? 0) ? s : worst), "passed");
+  }
+
   function renderStatus(t) {
-    // Nella scheda di un singolo browser mostriamo lo stato di quel browser, altrimenti il peggiore.
-    const st = state.view === "all" ? t.status : t.browsers[state.view];
+    // Nella scheda di un singolo browser mostriamo lo stato di quel browser, altrimenti quello visibile.
+    const st = state.view === "all" ? overallStatus(t) : t.browsers[state.view];
     const ms = state.view === "all" ? t.durationMs : (t.durations && t.durations[state.view]) ?? t.durationMs;
     return { st, ms };
   }
@@ -663,7 +689,9 @@
                     // Durante un'esecuzione: stato in diretta del controllo (sui browser coinvolti).
                     let liveRow = null;
                     if (info) {
-                      const states = (state.view === "all" ? info.browsers : [state.view]).map((b) => liveStateOf(info, t, b)).filter(Boolean);
+                      // Nella vista "tutti" lo stato in diretta segue i browser mostrati accanto al controllo.
+                      const shown = state.view === "all" ? info.browsers.filter((b) => !isDevice(b)) : [state.view];
+                      const states = shown.map((b) => liveStateOf(info, t, b)).filter(Boolean);
                       if (states.length) {
                         liveRow = states.includes("running") ? "running" : states.includes("pending") ? "pending" : null;
                         if (!liveRow) st = states.includes("failed") ? "failed" : states.includes("skipped") ? "skipped" : "passed";
