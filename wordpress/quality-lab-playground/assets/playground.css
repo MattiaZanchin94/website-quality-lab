@@ -20,6 +20,19 @@
 }
 .qlp-updated { box-shadow: 0 0 0 3px var(--qlp-ok-bg); }
 
+/* Sezioni: computer oppure smartphone e tablet (controllo a due segmenti sopra le schede). */
+.qlp-sections {
+  display: flex; gap: 4px; padding: 4px; margin: 0 0 20px;
+  background: #f1f4f9; border-radius: 10px;
+}
+.qlp-section {
+  flex: 1; border: 0; border-radius: 7px; padding: 8px 10px; cursor: pointer;
+  background: none; color: var(--qlp-muted); font-size: 14px; font-weight: 600; white-space: nowrap;
+}
+.qlp-section[aria-pressed="true"] { background: #fff; color: var(--qlp-accent); box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12); }
+.qlp-section:focus-visible, .qlp-tab:focus-visible { outline: 2px solid var(--qlp-accent); outline-offset: 2px; }
+@media (max-width: 420px) { .qlp-section { font-size: 13px; padding: 8px 6px; } }
+
 .qlp-tabs {
   display: flex; gap: 4px; margin: -8px 0 20px; padding-bottom: 8px;
   border-bottom: 1px solid var(--qlp-border); overflow-x: auto;

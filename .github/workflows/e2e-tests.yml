@@ -22,7 +22,7 @@ on:
         type: choice
         required: false
         default: all
-        options: [all, chromium, msedge, firefox, webkit]
+        options: [all, desktop, mobile, chromium, msedge, firefox, webkit, iphone, android, ipad, fold]
 
 # Mai due esecuzioni in parallelo: una nuova richiesta aspetta che finisca quella in corso.
 concurrency:
@@ -33,9 +33,10 @@ permissions:
   contents: read
 
 jobs:
-  # 1) Gli stessi test, in parallelo, sui 4 browser per computer.
-  #    Esecuzioni programmate e push: tutti i browser. Su richiesta: tutti o uno solo.
-  #    (L'emulazione di smartphone e tablet è pronta nei test, QLP_DEVICE, ma per ora non gira in CI.)
+  # 1) Gli stessi test, in parallelo: 4 browser per computer e 5 dispositivi emulati.
+  #    Esecuzioni programmate e push: tutto. Su richiesta (dalla Playground): i browser per computer
+  #    ("desktop"), i dispositivi ("mobile", senza il Galaxy Fold che gira solo in automatico),
+  #    un solo browser o un solo dispositivo ("ipad" = verticale e orizzontale).
   test:
     name: Test (${{ matrix.browser }})
     runs-on: ubuntu-latest
@@ -49,11 +50,15 @@ jobs:
     strategy:
       fail-fast: false # se un browser fallisce, gli altri continuano
       matrix:
-        browser: ${{ fromJSON((inputs.browser && inputs.browser != 'all') && format('["{0}"]', inputs.browser) || '["chromium","msedge","firefox","webkit"]') }}
+        browser: ${{ fromJSON(inputs.browser == 'desktop' && '["chromium","msedge","firefox","webkit"]' || inputs.browser == 'mobile' && '["iphone","android","ipad","ipadland"]' || inputs.browser == 'ipad' && '["ipad","ipadland"]' || (inputs.browser && inputs.browser != 'all') && format('["{0}"]', inputs.browser) || '["chromium","msedge","firefox","webkit","iphone","android","ipad","ipadland","fold"]') }}
     env:
-      # Motore di Playwright: Edge è Chromium con il channel "msedge".
-      BROWSER: ${{ matrix.browser == 'msedge' && 'chromium' || matrix.browser }}
+      # Motore di Playwright per ogni voce della matrice:
+      #   Edge è Chromium con il channel "msedge"; Android e Galaxy Fold sono Chromium emulato;
+      #   iPhone e iPad (verticale e orizzontale) sono WebKit emulato.
+      BROWSER: ${{ contains(fromJSON('["msedge","android","fold"]'), matrix.browser) && 'chromium' || contains(fromJSON('["iphone","ipad","ipadland"]'), matrix.browser) && 'webkit' || matrix.browser }}
       CHANNEL_ARGS: ${{ matrix.browser == 'msedge' && '-- Playwright.LaunchOptions.Channel=msedge' || '' }}
+      # Dispositivo emulato (schermo, touch, user agent) letto dai test in QualityLabTest.cs.
+      QLP_DEVICE: ${{ contains(fromJSON('["iphone","android","ipad","fold","ipadland"]'), matrix.browser) && matrix.browser || '' }}
       HOME: /root
 
     steps:

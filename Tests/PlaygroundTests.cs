@@ -62,6 +62,9 @@ public class PlaygroundTests : QualityLabTest
     {
         await OpenAsync(PlaygroundUrl);
 
+        // Da smartphone e tablet la pagina apre la sezione dei dispositivi: passiamo a quella per computer.
+        await Page.Locator(".qlp-section[data-section=desktop]").ClickAsync(new() { Timeout = 15_000 });
+
         var firefoxTab = Page.GetByRole(AriaRole.Tab, new() { Name = "Firefox" });
         await firefoxTab.ClickAsync(new() { Timeout = 15_000 });
 
@@ -105,10 +108,11 @@ public class PlaygroundTests : QualityLabTest
         await OpenAsync(PlaygroundUrl);
 
         // Non lo clicchiamo: questo test gira ogni ora e avvierebbe un'altra esecuzione all'infinito.
-        // Verifichiamo solo che ci sia, in uno dei suoi stati possibili.
+        // Verifichiamo solo che ci sia, in uno dei suoi stati possibili. Da smartphone e tablet
+        // la pagina apre il proprio dispositivo, es. "Avvia i controlli su iPhone".
         await Expect(Page.GetByRole(AriaRole.Button, new()
             {
-                NameRegex = new Regex("Avvia i controlli ora|Disponibile tra|Controlli in corso"),
+                NameRegex = new Regex("Avvia i controlli (ora|su )|Disponibile tra|Controlli in corso"),
             }))
             .ToBeVisibleAsync(new() { Timeout = 15_000 });
     }

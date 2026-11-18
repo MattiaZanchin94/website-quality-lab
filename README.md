@@ -5,9 +5,9 @@
 
 🇮🇹 [Leggi in italiano](README.it.md)
 
-End-to-end test suite that continuously checks my website, [mattiazanchin.com](https://mattiazanchin.com), on four desktop browsers, and publishes the results on the site itself.
+End-to-end test suite that continuously checks my website, [mattiazanchin.com](https://mattiazanchin.com), on four desktop browsers and five emulated phones and tablets, and publishes the results on the site itself.
 
-On the **[Playground](https://mattiazanchin.com/playground/)** page anyone can see the latest results in plain language, for all browsers or one at a time, and **start a new test run** on every browser or on a single one. The page is available in Italian and English.
+On the **[Playground](https://mattiazanchin.com/playground/)** page anyone can see the latest results in plain language and **start a new test run**. The page recognises the visitor's device: from a computer it opens the desktop browsers, from an iPhone, an Android phone or an iPad it opens and runs that emulated device. The page is available in Italian and English.
 
 ---
 
@@ -20,15 +20,15 @@ flowchart LR
     S["Schedule (hourly)<br/>push to main"] --> GA
     subgraph GA["GitHub Actions"]
         direction TB
-        T1["Tests · Chromium"] & T4["Tests · Edge"] & T2["Tests · Firefox"] & T3["Tests · WebKit"] --> P["Publish<br/>summary.json"]
+        T1["Tests · Chromium"] & T4["Tests · Edge"] & T2["Tests · Firefox"] & T3["Tests · WebKit"] & T5["Tests · iPhone, Android, iPad portrait/landscape,<br/>Galaxy Fold (emulated)"] --> P["Publish<br/>summary.json"]
     end
     P -- "summary.json" --> GP["GitHub Pages"]
     GP -- "fetch" --> V
-    T1 & T4 & T2 & T3 -. "Playwright" .-> SITE["mattiazanchin.com"]
+    T1 & T4 & T2 & T3 & T5 -. "Playwright" .-> SITE["mattiazanchin.com"]
 ```
 
 1. **Playwright + NUnit** tests (C#) open the real site and act like a user: open pages, click menu items, read articles.
-2. **GitHub Actions** runs them every hour, on every push, and on demand, on **Chromium (Chrome), Microsoft Edge, Firefox and WebKit (Safari)**, all in parallel. On demand runs can target a single browser.
+2. **GitHub Actions** runs them every hour, on every push, and on demand, on **Chromium (Chrome), Microsoft Edge, Firefox and WebKit (Safari)**, plus **iPhone, Android, iPad in portrait and landscape and a folded Galaxy Z Fold**, emulated with Playwright device profiles (screen size, touch, user agent), all in parallel. On demand runs can target the desktop browsers, the devices, or a single one of them.
 3. A publish job merges the results of the browsers and deploys a compact `summary.json` to **GitHub Pages**.
 4. A small **WordPress plugin** shows that summary on the Playground page and lets visitors start a run, through a server-side proxy that keeps the GitHub token private and allows at most one run every 10 minutes.
 
@@ -47,7 +47,7 @@ Level 2 needs tests that share no state and don't depend on each other's order. 
 
 ## What is tested
 
-Each check runs on every browser (13 checks × 4 = 52 runs). This first version covers the desktop site; the tests can already emulate phones and tablets (see below), and a dedicated mobile section of the Playground is planned.
+Each check runs on every browser and device (13 checks × 9 = 117 runs). On phones and tablets the navigation tests open the site's mobile menu first, like a person would, when the site shows it (an iPad in landscape gets the desktop menu).
 
 | Type | Area | Check | Priority |
 |---|---|---|---|
@@ -107,7 +107,7 @@ dotnet test
 # Choose the browser
 BROWSER=webkit dotnet test
 
-# Emulated devices, not yet run in CI: iphone, android, fold, ipad, ipadland (WebKit for iPhone/iPad, Chromium for Android/Fold)
+# Emulated devices: iphone, android, fold, ipad, ipadland (WebKit for iPhone/iPad, Chromium for Android/Fold)
 QLP_DEVICE=iphone BROWSER=webkit dotnet test
 
 # Microsoft Edge (Chromium with the msedge channel; Edge must be installed)
@@ -120,7 +120,8 @@ dotnet test --filter TestCategory=Smoke
 ## Design notes
 
 - **Plain-language results.** Test names are written for non-technical readers, so the website shows sentences like “The site is reachable and loads correctly” instead of method names.
-- **Desktop first.** The Playground tests the desktop site on the four desktop browsers, so the duration and the "slowest browser" always refer to those four machines. Phone and tablet emulation is already in the tests (`QLP_DEVICE`, with the mobile menu opened like a person would) and will get its own section of the Playground.
+- **The Playground follows the visitor's device.** Two sections, *Desktop* and *Phones and tablets*, each with its own results, duration chart and run button, so the "slowest" always refers to the machines of that section. The page opens the section and tab of the visitor's device (iPhone, Android, iPad, also when iPadOS presents itself as a Mac) and the run button checks only that device; tabs let anyone look at the others. The folded Galaxy Fold runs only in the automatic runs.
+- **Reliable CI.** The tests run in the official Playwright container, which already ships the browsers and their system dependencies: only Microsoft Edge is installed during the run, with timeouts and retries.
 - **Live progress.** During a run each test reports *started / passed / failed* to the WordPress plugin (`Tests/LiveProgress.cs`, authenticated with a shared secret). The Playground shows which check is running on which browser and a progress bar that moves continuously but never runs ahead of the real progress or goes backwards. Reporting is fire-and-forget: if it fails, the tests are unaffected.
 - **Order from data, not markup.** The Playground page lists checks by priority (smoke first, then severity, then menu position), computed from test metadata in `summary.json`.
 - **One source of truth for the menu.** Navigation tests are generated with `[TestCaseSource]` from a single ordered array: updating the menu means editing one line.

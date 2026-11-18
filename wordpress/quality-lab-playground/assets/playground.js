@@ -31,13 +31,16 @@
       successRate: "tasso di successo",
       duration: "tempo di verifica",
       durationAll: "tempo di verifica (browser in parallelo)",
+      durationAllMobile: "tempo di verifica (dispositivi in parallelo)",
       chartTitle: "Durata per browser",
+      chartTitleMobile: "Durata per dispositivo",
       resultsTitle: "Risultati dell'ultima esecuzione",
       casesTitle: (n) => `Casi di test (${n})`,
       legendTypes: "Tipologia di test",
       legendPriorities: "Priorità",
       slowest: "il più lento",
       chartNote: "I browser vengono controllati contemporaneamente, ognuno su un computer separato: la verifica dura quanto il browser più lento.",
+      chartNoteMobile: "I dispositivi vengono emulati contemporaneamente, ognuno su un computer separato: la verifica dura quanto il dispositivo più lento.",
       howTitle: "Come funziona?",
       close: "Chiudi",
       how: [
@@ -47,20 +50,39 @@
         "La lunghezza della barra indica solo il tempo; accanto a ogni browser trovi quanti controlli ha superato.",
         "I controlli riguardano la versione del sito per computer: Chrome, Edge, Firefox e Safari.",
       ],
+      howMobile: [
+        "A ogni verifica GitHub Actions avvia un computer separato per ogni dispositivo, e partono tutti insieme.",
+        "I dispositivi sono emulati: lo stesso motore del browser (Safari per iPhone e iPad, Chrome per Android) con schermo, touch e identità di un iPhone 15, di un Pixel 7, di un iPad Pro 11 e di un Galaxy Z Fold 7 chiuso. Non sono dispositivi veri.",
+        "Su ogni computer i controlli vengono eseguiti uno dopo l'altro, come farebbe una persona: sul telefono aprono anche il menu mobile del sito.",
+        "Per questo il tempo di verifica è quello del dispositivo più lento, non la somma dei tempi.",
+        "L'iPad viene provato sia in verticale sia in orizzontale; il Galaxy Fold solo nelle esecuzioni automatiche.",
+      ],
+      sections: { desktop: "💻 Computer", mobile: "📱 Smartphone e tablet" },
+      sectionsLabel: "Scegli dove verificare il sito",
       // Varianti di ogni browser: il computer e i dispositivi emulati con lo stesso motore.
       variantNames: { chromium: "computer", android: "Android", fold: "Galaxy Fold chiuso", msedge: "computer", firefox: "computer", webkit: "computer", iphone: "iPhone", ipad: "iPad verticale", ipadland: "iPad orizzontale" },
       failedOn: (names) => `non superato su: ${names}`,
       mobileVisitor: "Stai usando uno smartphone o un tablet: i controlli non girano sul tuo dispositivo, ma su computer di GitHub, e verificano la versione del sito per computer.",
+      mobileNote: "I controlli non girano sul tuo dispositivo: computer di GitHub emulano smartphone e tablet (schermo, touch e identità del dispositivo).",
       matrix: (checks, browsers) =>
         `${checks} controlli, ripetuti su ${browsers.length} browser per computer (${browsers.join(", ")})`,
+      matrixMobile: (checks, devices) =>
+        `${checks} controlli, ripetuti su ${devices.length} dispositivi emulati (${devices.join(", ")})`,
       engines: {
         chromium: "Google Chrome (motore Chromium): computer",
         msedge: "Microsoft Edge (motore Chromium): computer",
         firefox: "Firefox (motore Gecko): computer",
         webkit: "Safari (motore WebKit): computer",
+        iphone: "iPhone 15 emulato, con il motore di Safari (WebKit)",
+        android: "Pixel 7 (Android) emulato, con il motore di Chrome (Chromium)",
+        ipad: "iPad Pro 11 emulato in verticale e in orizzontale, con il motore di Safari (WebKit)",
+        fold: "Galaxy Z Fold 7 chiuso emulato, con il motore di Chrome (Chromium); solo nelle esecuzioni automatiche",
       },
       allBrowsers: "Tutti i browser",
+      allDevices: "Tutti i dispositivi",
+      autoOnly: "Solo nelle esecuzioni automatiche",
       tabsLabel: "Scegli il browser",
+      tabsLabelMobile: "Scegli il dispositivo",
       noResults: "Nessun risultato ancora per questo browser: avvia i controlli per ottenerli.",
       runOn: (name) => `▶ Avvia i controlli su ${name}`,
       passed: "superato",
@@ -85,6 +107,7 @@
         starting: "Richiesta inviata",
         setup: "Preparazione dei browser",
         tests: (done, total) => `Verifica in corso: ${done} di ${total} controlli completati`,
+        other: "Verifica in corso",
         publish: "Pubblicazione dei risultati",
         runningNow: "In esecuzione",
         on: "su",
@@ -123,13 +146,16 @@
       successRate: "success rate",
       duration: "check duration",
       durationAll: "check time (browsers in parallel)",
+      durationAllMobile: "check time (devices in parallel)",
       chartTitle: "Duration per browser",
+      chartTitleMobile: "Duration per device",
       resultsTitle: "Latest run results",
       casesTitle: (n) => `Test cases (${n})`,
       legendTypes: "Test type",
       legendPriorities: "Priority",
       slowest: "the slowest",
       chartNote: "The browsers are checked at the same time, each on a separate computer: the run lasts as long as the slowest browser.",
+      chartNoteMobile: "The devices are emulated at the same time, each on a separate computer: the run lasts as long as the slowest device.",
       howTitle: "How does it work?",
       close: "Close",
       how: [
@@ -139,19 +165,38 @@
         "A bar's length shows only the time; next to each browser you'll find how many checks it passed.",
         "The checks cover the desktop version of the site: Chrome, Edge, Firefox and Safari.",
       ],
+      howMobile: [
+        "For every run, GitHub Actions starts a separate computer for each device, and they all start together.",
+        "The devices are emulated: the same browser engine (Safari for iPhone and iPad, Chrome for Android) with the screen, touch and identity of an iPhone 15, a Pixel 7, an iPad Pro 11 and a folded Galaxy Z Fold 7. They are not real devices.",
+        "On each computer the checks run one after another, like a person would: on phones they also open the site's mobile menu.",
+        "That's why the check time is the one of the slowest device, not the sum of the times.",
+        "The iPad is tested both in portrait and in landscape; the Galaxy Fold only in the automatic runs.",
+      ],
+      sections: { desktop: "💻 Desktop", mobile: "📱 Phones and tablets" },
+      sectionsLabel: "Choose where to check the site",
       variantNames: { chromium: "computer", android: "Android", fold: "folded Galaxy Fold", msedge: "computer", firefox: "computer", webkit: "computer", iphone: "iPhone", ipad: "iPad portrait", ipadland: "iPad landscape" },
       failedOn: (names) => `not passed on: ${names}`,
       mobileVisitor: "You're on a smartphone or tablet: the checks don't run on your device but on GitHub computers, and they check the desktop version of the site.",
+      mobileNote: "The checks don't run on your device: GitHub computers emulate phones and tablets (screen, touch and device identity).",
       matrix: (checks, browsers) =>
         `${checks} checks, repeated on ${browsers.length} desktop browsers (${browsers.join(", ")})`,
+      matrixMobile: (checks, devices) =>
+        `${checks} checks, repeated on ${devices.length} emulated devices (${devices.join(", ")})`,
       engines: {
         chromium: "Google Chrome (Chromium engine): computer",
         msedge: "Microsoft Edge (Chromium engine): computer",
         firefox: "Firefox (Gecko engine): computer",
         webkit: "Safari (WebKit engine): computer",
+        iphone: "Emulated iPhone 15, with Safari's engine (WebKit)",
+        android: "Emulated Pixel 7 (Android), with Chrome's engine (Chromium)",
+        ipad: "Emulated iPad Pro 11 in portrait and landscape, with Safari's engine (WebKit)",
+        fold: "Emulated folded Galaxy Z Fold 7, with Chrome's engine (Chromium); automatic runs only",
       },
       allBrowsers: "All browsers",
+      allDevices: "All devices",
+      autoOnly: "Automatic runs only",
       tabsLabel: "Choose the browser",
+      tabsLabelMobile: "Choose the device",
       noResults: "No results yet for this browser: run the checks to get them.",
       runOn: (name) => `▶ Run the checks on ${name}`,
       passed: "passed",
@@ -176,6 +221,7 @@
         starting: "Request sent",
         setup: "Preparing the browsers",
         tests: (done, total) => `Checking the site: ${done} of ${total} checks done`,
+        other: "Check in progress",
         publish: "Publishing the results",
         runningNow: "Running",
         on: "on",
@@ -205,7 +251,8 @@
     summary: null,
     status: null,
     phase: "idle", // idle | starting | queued | in_progress | refreshing
-    view: "all", // scheda selezionata: "all" oppure un browser (chromium, msedge, firefox, webkit)
+    section: "desktop", // "desktop" (browser per computer) oppure "mobile" (dispositivi emulati)
+    view: "all", // scheda selezionata: "all" oppure un browser o dispositivo della sezione
     priority: "all", // filtro dei controlli: "all", "blocker" oppure "major"
     message: null,
     messageKind: "info", // "info" oppure "warning" (avviso evidenziato)
@@ -278,7 +325,7 @@
     if (rows.length < 2) return "";
     const max = Math.max(...rows.map((r) => r.ms));
     return `<div class="qlp-chart">
-      <h4>${esc(T.chartTitle)}</h4>
+      <h4>${esc(isMobileSection() ? T.chartTitleMobile : T.chartTitle)}</h4>
       ${rows
         .map(
           (r) => `<div class="qlp-bar-row">
@@ -291,7 +338,7 @@
           </div>`,
         )
         .join("")}
-      <p class="qlp-chart-note">${esc(T.chartNote)}</p>
+      <p class="qlp-chart-note">${esc(isMobileSection() ? T.chartNoteMobile : T.chartNote)}</p>
       <button type="button" class="qlp-how-link" aria-haspopup="dialog">${esc(T.howTitle)}</button>
     </div>`;
   }
@@ -301,22 +348,40 @@
 
   const STATUS_ICON = { passed: "✓", failed: "✗", broken: "!", skipped: "–" };
 
-  // Nomi familiari per il pubblico; il tooltip indica il motore di rendering reale.
-  // Nomi brevi per schede e badge; il tooltip (T.engines) spiega il dispositivo per esteso.
-  const BROWSER_NAMES = { chromium: "Chrome", msedge: "Edge", firefox: "Firefox", webkit: "Safari" };
-
-  // Varianti mostrate dentro ogni browser. Per ora solo i browser per computer: i dispositivi
-  // emulati (android, fold, iphone, ipad, ipadland) andranno in una sezione dedicata e qui
-  // vengono ignorati anche se presenti in summary.json.
-  const FAMILIES = {
-    chromium: ["chromium"],
-    msedge: ["msedge"],
-    firefox: ["firefox"],
-    webkit: ["webkit"],
+  // Due sezioni: i browser per computer e i dispositivi emulati. Ogni voce mostrata (scheda, badge,
+  // riga del grafico) raggruppa una o più configurazioni di summary.json: l'iPad comprende
+  // verticale e orizzontale. Nomi brevi per schede e badge; il tooltip (T.engines) li spiega.
+  const SECTIONS = {
+    desktop: {
+      names: { chromium: "Chrome", msedge: "Edge", firefox: "Firefox", webkit: "Safari" },
+      families: { chromium: ["chromium"], msedge: ["msedge"], firefox: ["firefox"], webkit: ["webkit"] },
+      // Valore da inviare per avviare i controlli ("all" = tutta la sezione).
+      run: { all: "desktop", chromium: "chromium", msedge: "msedge", firefox: "firefox", webkit: "webkit" },
+    },
+    mobile: {
+      names: { iphone: "iPhone", android: "Android", ipad: "iPad", fold: "Galaxy Fold" },
+      families: { iphone: ["iphone"], android: ["android"], ipad: ["ipad", "ipadland"], fold: ["fold"] },
+      // Il Galaxy Fold gira solo nelle esecuzioni automatiche: niente pulsante.
+      run: { all: "mobile", iphone: "iphone", android: "android", ipad: "ipad" },
+    },
   };
-  const FAMILY_OF = Object.fromEntries(Object.entries(FAMILIES).flatMap(([f, vs]) => vs.map((v) => [v, f])));
-  // Valore da inviare per avviare i controlli su un browser e su tutte le sue varianti.
-  const RUN_KEY = { chromium: "chromium", msedge: "msedge", firefox: "firefox", webkit: "webkit" };
+  let BROWSER_NAMES, FAMILIES, FAMILY_OF, RUN_KEY;
+  function setSection(section) {
+    state.section = section;
+    ({ names: BROWSER_NAMES, families: FAMILIES, run: RUN_KEY } = SECTIONS[section]);
+    FAMILY_OF = Object.fromEntries(Object.entries(FAMILIES).flatMap(([f, vs]) => vs.map((v) => [v, f])));
+  }
+  const isMobileSection = () => state.section === "mobile";
+
+  // Dispositivo di chi visita: iPhone, iPad (anche quando Safari si presenta come Mac) o Android.
+  // Apre la sezione e la scheda corrispondenti; gli altri dispositivi partono dalla sezione Computer.
+  function detectDevice() {
+    const ua = navigator.userAgent || "";
+    if (/iPhone|iPod/.test(ua)) return ["mobile", "iphone"];
+    if (/iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return ["mobile", "ipad"];
+    if (/Android/.test(ua)) return ["mobile", "android"];
+    return ["desktop", "all"];
+  }
 
   // Esito di un browser a partire dalle sue varianti: un fallimento vince; i controlli bloccati
   // dal CAPTCHA contano solo se nessuna variante è stata verificata.
@@ -362,8 +427,12 @@
     const skipped = count("skipped");
     const verified = all.length - skipped;
     const slowest = Object.values(runs).reduce((m, r) => Math.max(m, r.durationMs || 0), 0);
+    // Ultima esecuzione che ha toccato questa sezione (es. solo i dispositivi, avviata da un visitatore).
+    const latestRun = Object.values(runs).reduce((a, b) => (!a || new Date(b.startedAt) > new Date(a.startedAt) ? b : a), null);
     return {
       ...s,
+      startedAt: (latestRun && latestRun.startedAt) || s.startedAt,
+      trigger: (latestRun && latestRun.trigger) || s.trigger,
       tests,
       runs,
       browsers: fams,
@@ -456,20 +525,23 @@
   // così non si chiude quando il riquadro viene ridisegnato durante un'esecuzione.
   let dialog = null;
   function howDialog() {
-    if (dialog) return dialog;
-    dialog = document.createElement("dialog");
-    dialog.className = "qlp qlp-modal";
-    dialog.setAttribute("aria-labelledby", "qlp-how-title");
-    dialog.setAttribute("data-no-translation", ""); // le traduzioni le gestiamo noi, non TranslatePress
+    if (!dialog) {
+      dialog = document.createElement("dialog");
+      dialog.className = "qlp qlp-modal";
+      dialog.setAttribute("aria-labelledby", "qlp-how-title");
+      dialog.setAttribute("data-no-translation", ""); // le traduzioni le gestiamo noi, non TranslatePress
+      // Un clic sullo sfondo scuro (fuori dal contenuto) chiude la finestra; Esc la chiude già da solo.
+      dialog.addEventListener("click", (e) => {
+        if (e.target === dialog) dialog.close();
+      });
+      document.body.appendChild(dialog);
+    }
+    // Il testo dipende dalla sezione aperta (computer o dispositivi emulati).
+    const lines = isMobileSection() ? T.howMobile : T.how;
     dialog.innerHTML = `
       <h3 id="qlp-how-title">${esc(T.howTitle)}</h3>
-      <ul>${T.how.map((line) => `<li>${esc(line)}</li>`).join("")}</ul>
+      <ul>${lines.map((line) => `<li>${esc(line)}</li>`).join("")}</ul>
       <form method="dialog"><button type="submit" class="qlp-run">${esc(T.close)}</button></form>`;
-    // Un clic sullo sfondo scuro (fuori dal contenuto) chiude la finestra; Esc la chiude già da solo.
-    dialog.addEventListener("click", (e) => {
-      if (e.target === dialog) dialog.close();
-    });
-    document.body.appendChild(dialog);
     return dialog;
   }
 
@@ -500,8 +572,9 @@
   function runBrowsers(run) {
     const m = run && run.title && run.title.match(/·\s*([a-z]+)\s*$/);
     if (!m) return ALL_TEST_BROWSERS;
-    if (m[1] === "chrome") return FAMILIES.chromium;
-    if (m[1] === "safari") return FAMILIES.webkit;
+    if (m[1] === "desktop") return Object.values(SECTIONS.desktop.families).flat();
+    if (m[1] === "mobile") return ["iphone", "android", "ipad", "ipadland"]; // il Fold solo in automatico
+    if (m[1] === "ipad") return SECTIONS.mobile.families.ipad;
     return ALL_TEST_BROWSERS.includes(m[1]) ? [m[1]] : ALL_TEST_BROWSERS;
   }
 
@@ -563,6 +636,8 @@
     if (state.waiting) return T.waiting;
     if (!info || info.done + info.current.length === 0) return T.live.setup;
     if (info.done >= info.total) return T.live.publish;
+    // L'esecuzione riguarda solo l'altra sezione: niente conteggio dei controlli di questa.
+    if (!info.checksTotal) return T.live.other;
     return T.live.tests(info.checksDone, info.checksTotal);
   }
 
@@ -572,6 +647,7 @@
     const pct = Math.round(live.shown);
     const now = info && info.current.length
       ? `<p class="qlp-live-now"><span class="qlp-pulse"></span>${esc(T.live.runningNow)}: ${info.current
+          .filter((c) => FAMILY_OF[c.b]) // solo le configurazioni della sezione aperta
           .slice(0, 2)
           .filter((c, i, all) => all.findIndex((x) => x.t === c.t && FAMILY_OF[x.b] === FAMILY_OF[c.b]) === i)
           .map((c) => `«${esc(titleOf(c.t))}» ${esc(T.live.on)} ${BROWSER_NAMES[FAMILY_OF[c.b]]}`)
@@ -671,10 +747,20 @@
     };
   }
 
+  // Scelta della sezione: computer oppure smartphone e tablet.
+  function renderSections() {
+    return `<div class="qlp-sections" role="group" aria-label="${esc(T.sectionsLabel)}">${Object.keys(SECTIONS)
+      .map(
+        (key) =>
+          `<button type="button" class="qlp-section" data-section="${key}" aria-pressed="${state.section === key}">${esc(T.sections[key])}</button>`,
+      )
+      .join("")}</div>`;
+  }
+
   function renderTabs(s) {
     const known = Object.keys(BROWSER_NAMES);
-    const tabs = [["all", T.allBrowsers], ...known.map((b) => [b, BROWSER_NAMES[b]])];
-    return `<div class="qlp-tabs" role="tablist" aria-label="${esc(T.tabsLabel)}">${tabs
+    const tabs = [["all", isMobileSection() ? T.allDevices : T.allBrowsers], ...known.map((b) => [b, BROWSER_NAMES[b]])];
+    return `<div class="qlp-tabs" role="tablist" aria-label="${esc(isMobileSection() ? T.tabsLabelMobile : T.tabsLabel)}">${tabs
       .map(([key, name]) => {
         const selected = state.view === key;
         // Pallino colorato con l'esito di quel browser (nessuno se non ha ancora risultati).
@@ -723,13 +809,13 @@
         <div class="qlp-stats">
           <div class="qlp-stat"><span class="qlp-num">${d.passed}/${d.total}</span><span class="qlp-label">${esc(T.checksPassed)}</span></div>
           <div class="qlp-stat"><span class="qlp-num">${d.successRate.toLocaleString(LANG)}%</span><span class="qlp-label">${esc(T.successRate)}</span></div>
-          <div class="qlp-stat"><span class="qlp-num">${minutes(d.durationMs)}</span><span class="qlp-label">${esc(state.view === "all" ? T.durationAll : T.duration)}</span></div>
+          <div class="qlp-stat"><span class="qlp-num">${minutes(d.durationMs)}</span><span class="qlp-label">${esc(state.view === "all" ? (isMobileSection() ? T.durationAllMobile : T.durationAll) : T.duration)}</span></div>
         </div>
         ${d.skipped ? `<p class="qlp-blocked">${esc(T.blockedNote(d.skipped))}</p>` : ""}
         ${
           state.view === "all" && s.browsers && s.browsers.length > 1
             ? `<p class="qlp-meta qlp-matrix">${esc(
-                T.matrix(s.checks, s.browsers.map((b) => BROWSER_NAMES[b] || b)),
+                (isMobileSection() ? T.matrixMobile : T.matrix)(s.checks, s.browsers.map((b) => BROWSER_NAMES[b] || b)),
               )}</p>`
             : ""
         }
@@ -777,11 +863,18 @@
 
     root.innerHTML = `
       <div class="qlp-card ${state.justUpdated ? "qlp-updated" : ""}">
+        ${renderSections()}
         ${renderTabs(s)}
         <div class="qlp-actions">
           ${renderButton()}
         </div>
-        ${isMobileVisitor() ? `<p class="qlp-device-note">${esc(T.mobileVisitor)}</p>` : ""}
+        ${
+          isMobileSection()
+            ? `<p class="qlp-device-note">${esc(T.mobileNote)}</p>`
+            : isMobileVisitor()
+              ? `<p class="qlp-device-note">${esc(T.mobileVisitor)}</p>`
+              : ""
+        }
         ${renderLiveProgress()}
         ${state.message ? `<p class="qlp-message qlp-message-${state.messageKind}" role="status">${esc(state.message)}</p>` : ""}
         ${body}
@@ -794,6 +887,14 @@
     root.querySelectorAll(".qlp-filter-btn").forEach((b) =>
       b.addEventListener("click", () => {
         state.priority = b.dataset.priority;
+        render();
+      }),
+    );
+    root.querySelectorAll(".qlp-section").forEach((b) =>
+      b.addEventListener("click", () => {
+        if (b.dataset.section === state.section) return;
+        setSection(b.dataset.section);
+        state.view = "all";
         render();
       }),
     );
@@ -812,6 +913,9 @@
 
     if (!st || !st.configured) {
       return ""; // senza token il pulsante non viene mostrato
+    } else if (!RUN_KEY[state.view]) {
+      label = T.autoOnly; // es. Galaxy Fold: solo nelle esecuzioni automatiche
+      disabled = true;
     } else if (state.phase !== "idle" || (st.run && st.run.status !== "completed")) {
       label = T.running;
       disabled = true;
@@ -833,11 +937,11 @@
     state.justUpdated = false;
     render();
 
-    // Avvia i controlli sul browser della scheda selezionata ("all" = tutti).
+    // Avvia i controlli sulla scheda selezionata ("all" = tutta la sezione: computer o dispositivi).
     const res = await getJson(cfg.runUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ browser: state.view === "all" ? "all" : RUN_KEY[state.view] }),
+      body: JSON.stringify({ browser: RUN_KEY[state.view] }),
     });
     const body = res.body || {};
 
@@ -925,9 +1029,18 @@
   /* ---------- Avvio ---------- */
 
   (async function init() {
+    const [section, view] = detectDevice();
+    setSection(section);
+    state.view = view;
     const [summary, status] = await Promise.all([loadSummary().catch(() => null), loadStatus().catch(() => null)]);
     state.summary = summary;
     state.status = status;
+    // Se non ci sono ancora risultati per i dispositivi emulati, si parte dalla sezione Computer.
+    const grouped = groupByBrowser(summary);
+    if (state.section === "mobile" && !(grouped && grouped.browsers && grouped.browsers.length)) {
+      setSection("desktop");
+      state.view = "all";
+    }
     render();
 
     // Se un'esecuzione è già in corso quando la pagina si apre, la seguiamo.
