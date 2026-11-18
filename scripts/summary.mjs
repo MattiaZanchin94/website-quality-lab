@@ -24,11 +24,22 @@ const ALL_BROWSERS = ["chromium", "msedge", "firefox", "webkit", "iphone", "andr
 const PRIORITY_OF_SEVERITY = { blocker: "blocker", critical: "blocker", normal: "major", minor: "minor", trivial: "minor" };
 const SEVERITY_OF_STATUS = { passed: 0, skipped: 1, broken: 2, failed: 3 };
 const env = process.env;
-const byTitle = new Map();
+// Raggruppiamo per chiave del test (classe, metodo e dati), non per titolo: un controllo
+// saltato già nel SetUp (es. dopo un CAPTCHA) non arriva a impostare il suo nome leggibile,
+// e più casi dello stesso metodo finirebbero sotto lo stesso titolo provvisorio.
+const byKey = new Map();
+// Un risultato ha il nome definitivo quando il test ha impostato anche quello inglese.
+const hasFinalName = (r) => Boolean(label(r, "name_en"));
 
 for (const r of results) {
   const title = r.name; // il nome leggibile impostato con [AllureName] o AllureApi.SetTestName
-  const t = byTitle.get(title) ?? {
+  const id = label(r, "test_key") ?? title;
+  const existing = byKey.get(id);
+  if (existing && hasFinalName(r) && !existing.en.title) {
+    // Il primo risultato visto era senza nome definitivo: prendiamo titolo e metadati da questo.
+    Object.assign(existing, { title, en: { title: label(r, "name_en"), feature: label(r, "feature_en") }, order: Number(label(r, "order")) || null });
+  }
+  const t = existing ?? {
     title,
     // Chiave stabile del test (classe, metodo e dati): la stessa usata dall'avanzamento in diretta.
     key: label(r, "test_key"),
@@ -50,7 +61,7 @@ for (const r of results) {
   const browser = label(r, "browser") ?? "chromium";
   t.browsers[browser] = r.status;
   t.durations[browser] = r.stop - r.start;
-  byTitle.set(title, t);
+  byKey.set(id, t);
 }
 
 // Le esecuzioni di questo run, per browser.
@@ -73,10 +84,11 @@ if (previousFile && !isFullRun) {
   for (const pt of prev?.tests ?? []) {
     for (const [b, status] of Object.entries(pt.browsers ?? {})) {
       if (ranNow.includes(b)) continue;
-      const t = byTitle.get(pt.title) ?? { ...pt, browsers: {}, durations: {} };
+      const id = pt.key ?? pt.title;
+      const t = byKey.get(id) ?? { ...pt, browsers: {}, durations: {} };
       t.browsers[b] = status;
       t.durations[b] = pt.durations?.[b] ?? pt.durationMs ?? 0;
-      byTitle.set(pt.title, t);
+      byKey.set(id, t);
     }
   }
   for (const b of prev?.browsers ?? []) {
@@ -87,7 +99,7 @@ if (previousFile && !isFullRun) {
 }
 
 // Stato e durata complessivi di ogni controllo: il peggiore e il più lento tra i browser.
-for (const t of byTitle.values()) {
+for (const t of byKey.values()) {
   t.status = Object.values(t.browsers).reduce((w, s) => (SEVERITY_OF_STATUS[s] > SEVERITY_OF_STATUS[w] ? s : w), "passed");
   t.durationMs = Math.max(0, ...Object.values(t.durations));
 }
@@ -98,7 +110,7 @@ const TYPE_RANK = { smoke: 0, regression: 1 };
 const SEVERITY_RANK = { blocker: 0, critical: 1, normal: 2, minor: 3, trivial: 4 };
 const rank = (map, key) => map[key] ?? 99;
 
-const tests = [...byTitle.values()].sort(
+const tests = [...byKey.values()].sort(
   (a, b) =>
     rank(TYPE_RANK, a.type) - rank(TYPE_RANK, b.type) ||
     rank(SEVERITY_RANK, a.severity) - rank(SEVERITY_RANK, b.severity) ||
