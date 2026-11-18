@@ -51,19 +51,7 @@ public class NavigationTests : QualityLabTest
         // Su smartphone e tablet le voci sono nascoste dietro il pulsante "Menu di navigazione".
         var menuToggle = Page.Locator("header .navbar-toggle").Filter(new() { Visible = true });
 
-        // Prima di decidere aspettiamo la pagina vera: la voce di menu (menu desktop) oppure il pulsante
-        // del menu mobile. Subito dopo il caricamento l'hosting può far passare il browser dal suo
-        // controllo anti-bot automatico e poi riportarlo alla home: se controllassimo il pulsante in quel
-        // momento non lo troveremmo, e il menu resterebbe chiuso.
-        await Expect(menuLink.Or(menuToggle).First).ToBeVisibleAsync(new() { Timeout = 20_000 });
-
-        // Menu chiuso (smartphone, tablet in verticale): lo apriamo come farebbe una persona.
-        // Su un tablet in orizzontale il sito può mostrare direttamente il menu desktop.
-        if (await menuLink.CountAsync() == 0)
-        {
-            await menuToggle.First.ClickAsync();
-        }
-
+        await OpenMenuIfClosedAsync(menuLink, menuToggle);
         await menuLink.ClickAsync();
         await SkipIfBlockedByBotProtectionAsync();
 
@@ -73,5 +61,38 @@ public class NavigationTests : QualityLabTest
 
         // 2) La pagina mostra davvero titolo e testo, come li vede il visitatore.
         await ExpectPageShowsContentAsync(MainMenu[index].Heading);
+    }
+
+    /// <summary>
+    /// Su smartphone e tablet in verticale le voci sono dietro il pulsante del menu: lo apriamo
+    /// come farebbe una persona. Su desktop (e tablet in orizzontale) il menu è già visibile.
+    /// </summary>
+    /// <remarks>
+    /// Subito dopo il caricamento l'hosting può far passare il browser dal suo controllo anti-bot
+    /// automatico e ricaricare la pagina: il menu appena aperto si richiude, oppure il tocco arriva
+    /// prima che la pagina sia pronta. Per questo aspettiamo la pagina vera prima di decidere e,
+    /// se dopo un tocco il menu non si apre, tocchiamo di nuovo (al massimo 3 volte).
+    /// Un menu davvero rotto fa comunque fallire il test.
+    /// </remarks>
+    private async Task OpenMenuIfClosedAsync(ILocator menuLink, ILocator menuToggle)
+    {
+        const int attempts = 3;
+        for (var attempt = 1; attempt <= attempts; attempt++)
+        {
+            // La pagina vera: la voce di menu (menu aperto) oppure il pulsante (menu chiuso).
+            await Expect(menuLink.Or(menuToggle).First).ToBeVisibleAsync(new() { Timeout = 20_000 });
+            if (await menuLink.CountAsync() > 0) return;
+
+            await menuToggle.First.ClickAsync();
+            try
+            {
+                await Expect(menuLink).ToBeVisibleAsync(new() { Timeout = 5_000 });
+                return;
+            }
+            catch (Exception ex) when (attempt < attempts && ex is PlaywrightException or TimeoutException)
+            {
+                // Il menu non si è aperto: si riprova dalla pagina com'è adesso.
+            }
+        }
     }
 }
