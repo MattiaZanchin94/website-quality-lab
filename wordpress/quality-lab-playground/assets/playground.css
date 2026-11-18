@@ -251,3 +251,8 @@
 /* Contenitore del pulsante quando aspetta: porta il tooltip con la spiegazione. */
 .qlp-run-wrap { display: inline-block; cursor: help; }
 .qlp-run-wrap .qlp-run:disabled { pointer-events: none; }
+.qlp-why-link {
+  border: 0; background: none; padding: 4px 0; cursor: pointer;
+  color: var(--qlp-accent); font-size: 14px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px;
+}
+.qlp-why { flex-basis: 100%; margin: 0; padding: 10px 14px; border-radius: 8px; background: #fff7ed; color: #7c2d12; font-size: 14px; }

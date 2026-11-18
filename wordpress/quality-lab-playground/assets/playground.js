@@ -117,6 +117,7 @@
       courtCleaning: (min) =>
         `🧹 Stanno pulendo il parquet: il campetto torna libero tra ${min === 1 ? "1 minuto" : `${min} minuti`}. Intanto puoi guardare i risultati dell'ultima partita.`,
       // Spiegazioni nel tooltip del pulsante: perché si aspetta, con le regole del campetto.
+      whyLink: "Perché devo aspettare?",
       whyBusy: "Come al campetto, si gioca una partita alla volta: chi arriva aspetta il suo turno a bordo campo. La partita dura circa 3 minuti.",
       whyCleaning: "Una partita ogni 10 minuti, uguale per tutti i visitatori: tra una partita e l'altra si pulisce il parquet, così il sito non si affatica e il campetto resta aperto a tutti.",
       live: {
@@ -244,6 +245,7 @@
       courtBusy: "🏀 The court is busy: a game is on. When it ends, you can play too; meanwhile, you can follow it below.",
       courtCleaning: (min) =>
         `🧹 They're mopping the court: it's free again in ${min === 1 ? "1 minute" : `${min} minutes`}. Meanwhile, have a look at the results of the last game.`,
+      whyLink: "Why do I have to wait?",
       whyBusy: "Like at the playground, one game at a time: whoever arrives waits for their turn courtside. A game lasts about 3 minutes.",
       whyCleaning: "One game every 10 minutes, the same for every visitor: between games the court gets mopped, so the site doesn't get tired and the court stays open to everyone.",
       live: {
@@ -287,6 +289,7 @@
     following: false, // true mentre la pagina segue un'esecuzione
     waiting: false, // true se l'esecuzione seguita è in coda dietro un'altra
     justUpdated: false,
+    showWhy: false, // spiegazione "Perché devo aspettare?" aperta
   };
 
   /* ---------- Dati ---------- */
@@ -927,6 +930,12 @@
 
     const btn = root.querySelector(".qlp-run");
     if (btn) btn.addEventListener("click", startRun);
+    const whyLink = root.querySelector(".qlp-why-link");
+    if (whyLink)
+      whyLink.addEventListener("click", () => {
+        state.showWhy = !state.showWhy;
+        render();
+      });
     const how = root.querySelector(".qlp-how-link");
     if (how) how.addEventListener("click", () => howDialog().showModal());
     root.querySelectorAll(".qlp-filter-btn").forEach((b) =>
@@ -980,8 +989,16 @@
       why = T.whyCleaning;
     }
     const button = `<button type="button" class="qlp-run" ${disabled ? "disabled" : ""}>${esc(label)}</button>`;
+    if (!why) {
+      state.showWhy = false; // il campetto è libero: la prossima volta la spiegazione riparte chiusa
+      return button;
+    }
     // Un pulsante disattivato non mostra il tooltip in tutti i browser: lo mettiamo sul contenitore.
-    return why ? `<span class="qlp-run-wrap" title="${esc(why)}">${button}</span>` : button;
+    // Il tooltip però si vede solo con il mouse: accanto c'è un link visibile anche su telefono,
+    // che apre la spiegazione sotto il pulsante.
+    return `<span class="qlp-run-wrap" title="${esc(why)}">${button}</span>
+      <button type="button" class="qlp-why-link" aria-expanded="${state.showWhy}" aria-controls="qlp-why">ⓘ ${esc(T.whyLink)}</button>
+      ${state.showWhy ? `<p id="qlp-why" class="qlp-why">${esc(why)}</p>` : ""}`;
   }
 
 
