@@ -50,7 +50,7 @@ jobs:
     # WebKit con tutte le dipendenze di sistema sono già installati, quindi non si scarica nulla
     # dai mirror Ubuntu (che a volte si bloccavano). Gira come root: HOME=/root serve a Firefox.
     container:
-      image: mcr.microsoft.com/playwright/dotnet:v1.64.1-noble
+      image: mcr.microsoft.com/playwright/dotnet:v1.65.0-noble
       options: --ipc=host
     strategy:
       fail-fast: false # se un browser fallisce, gli altri continuano
