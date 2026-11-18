@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Quality Lab Playground
  * Description: Mostra i risultati dei test E2E del sito e permette ai visitatori di avviarli. Shortcode: [quality_lab_playground]
- * Version:     1.7.2
+ * Version:     1.8.0
  * Author:      Mattia Zanchin
  * License:     MIT
  *
@@ -13,13 +13,13 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const QLP_VERSION     = '1.7.2';
+const QLP_VERSION     = '1.8.0';
 const QLP_REPO        = 'Zancus/website-quality-lab';
 const QLP_WORKFLOW    = 'e2e-tests.yml';
 const QLP_PAGES_URL   = 'https://zancus.github.io/website-quality-lab';
 const QLP_COOLDOWN    = 10 * MINUTE_IN_SECONDS; // al massimo un avvio ogni 10 minuti, per tutto il sito
 const QLP_STATUS_TTL  = 10;                      // secondi di cache dello stato, per non interrogare GitHub a ogni visita
-const QLP_BROWSERS    = array( 'all', 'chromium', 'msedge', 'firefox', 'webkit', 'iphone', 'android', 'fold', 'ipad', 'ipadland' ); // valori ammessi per l'avvio
+const QLP_BROWSERS    = array( 'all', 'chrome', 'safari', 'chromium', 'msedge', 'firefox', 'webkit', 'iphone', 'android', 'fold', 'ipad', 'ipadland' ); // valori ammessi per l'avvio (chrome/safari = con i dispositivi emulati)
 const QLP_TEST_BROWSERS = array( 'chromium', 'msedge', 'firefox', 'webkit', 'iphone', 'android', 'fold', 'ipad', 'ipadland' );
 const QLP_PROGRESS_TTL  = 2 * HOUR_IN_SECONDS; // l'avanzamento di un'esecuzione resta disponibile per 2 ore
 

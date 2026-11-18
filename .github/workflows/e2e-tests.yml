@@ -22,7 +22,7 @@ on:
         type: choice
         required: false
         default: all
-        options: [all, chromium, msedge, firefox, webkit, iphone, android, ipad, fold, ipadland]
+        options: [all, chrome, safari, chromium, msedge, firefox, webkit, iphone, android, ipad, fold, ipadland]
 
 # Mai due esecuzioni in parallelo: una nuova richiesta aspetta che finisca quella in corso.
 concurrency:
@@ -42,7 +42,8 @@ jobs:
     strategy:
       fail-fast: false # se un browser fallisce, gli altri continuano
       matrix:
-        browser: ${{ fromJSON((inputs.browser && inputs.browser != 'all') && format('["{0}"]', inputs.browser) || '["chromium","msedge","firefox","webkit","iphone","android","ipad","fold","ipadland"]') }}
+        # "chrome" e "safari" = il browser più i dispositivi emulati con lo stesso motore (come nella pagina Playground).
+        browser: ${{ fromJSON(inputs.browser == 'chrome' && '["chromium","android","fold"]' || inputs.browser == 'safari' && '["webkit","iphone","ipad","ipadland"]' || (inputs.browser && inputs.browser != 'all') && format('["{0}"]', inputs.browser) || '["chromium","msedge","firefox","webkit","iphone","android","ipad","fold","ipadland"]') }}
     env:
       # Motore di Playwright per ogni voce della matrice:
       #   Edge è Chromium con il channel "msedge"; Android e Galaxy Fold sono Chromium emulato;

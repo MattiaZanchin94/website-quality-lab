@@ -120,6 +120,7 @@ dotnet test --filter TestCategory=Smoke
 ## Design notes
 
 - **Plain-language results.** Test names are written for non-technical readers, so the website shows sentences like “The site is reachable and loads correctly” instead of method names.
+- **Devices shown inside their browser.** Emulated phones and tablets use the same engine as a desktop browser, so the Playground groups them: Safari includes iPhone and iPad, Chrome includes Android and Galaxy Fold. Every browser shows the same 13 checks; a check passes on Safari only if it passes on desktop, iPhone and iPad, and the tooltip names the variant that failed. The data in `summary.json` stays per device.
 - **Live progress.** During a run each test reports *started / passed / failed* to the WordPress plugin (`Tests/LiveProgress.cs`, authenticated with a shared secret). The Playground shows which check is running on which browser and a progress bar that moves continuously but never runs ahead of the real progress or goes backwards. Reporting is fire-and-forget: if it fails, the tests are unaffected.
 - **Order from data, not markup.** The Playground page lists checks by priority (smoke first, then severity, then menu position), computed from test metadata in `summary.json`.
 - **One source of truth for the menu.** Navigation tests are generated with `[TestCaseSource]` from a single ordered array: updating the menu means editing one line.
