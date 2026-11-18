@@ -102,7 +102,34 @@ public abstract class QualityLabTest : PageTest
             if (frame == Page.MainFrame && Captcha.IsMatch(frame.Url)) _blockedByCaptcha = true;
         };
 
+        await HandleCookieBannerAsync();
+
         await LiveProgress.ReportAsync(ActualBrowser, TestKey, "running");
+    }
+
+    // ---------------------------------------------------------------------
+    // Banner dei cookie e Google Analytics
+    // ---------------------------------------------------------------------
+    // Il sito mostra un banner per il consenso ai cookie (GDPR). Il test si comporta come
+    // un visitatore attento alla privacy: quando il banner compare e copre la pagina, lo rifiuta.
+    // Le richieste verso Google Analytics vengono comunque bloccate, così le esecuzioni
+    // automatiche (ogni ora, su nove browser) non finiscono nelle statistiche delle visite.
+
+    private static readonly Regex AnalyticsHosts =
+        new(@"^https?://([^/]+\.)?(google-analytics\.com|googletagmanager\.com|analytics\.google\.com)/", RegexOptions.Compiled);
+
+    // Testo del pulsante "rifiuta" nei banner più comuni, in italiano e in inglese.
+    private static readonly Regex RejectCookies =
+        new(@"^\s*(rifiuta|nega|solo (i cookie )?necessari|deny|reject|decline|only necessary)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private async Task HandleCookieBannerAsync()
+    {
+        await Context.RouteAsync(AnalyticsHosts, route => route.AbortAsync());
+
+        // Playwright chiama questo gestore ogni volta che il banner è visibile prima di un'azione
+        // (clic, attesa, verifica): funziona anche se il banner compare qualche secondo dopo.
+        var reject = Page.GetByRole(AriaRole.Button, new() { NameRegex = RejectCookies }).Filter(new() { Visible = true }).First;
+        await Page.AddLocatorHandlerAsync(reject, button => button.ClickAsync());
     }
 
     [TearDown]
