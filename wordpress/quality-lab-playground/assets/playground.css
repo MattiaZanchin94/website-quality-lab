@@ -247,3 +247,7 @@
 .qlp-b-device { font-style: italic; }
 /* Nota per chi visita da smartphone o tablet: i controlli non girano sul suo dispositivo. */
 .qlp-device-note { margin: -8px 0 20px; padding: 8px 12px; border-radius: 8px; background: #eef4ff; color: #1e3a8a; font-size: 13px; }
+
+/* Contenitore del pulsante quando aspetta: porta il tooltip con la spiegazione. */
+.qlp-run-wrap { display: inline-block; cursor: help; }
+.qlp-run-wrap .qlp-run:disabled { pointer-events: none; }

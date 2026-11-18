@@ -53,6 +53,7 @@
         "Su ogni computer i controlli vengono eseguiti uno dopo l'altro, sempre nello stesso ordine.",
         "Per questo il tempo dei test è quello del browser più lento, non la somma dei tempi.",
         "La durata totale comprende anche la preparazione delle macchine (avvio, compilazione del progetto, installazione di Edge) e la pubblicazione dei risultati sul sito.",
+        "Come al campetto si gioca a turno: una partita alla volta e, tra un avvio e l'altro dei visitatori, 10 minuti per pulire il parquet. È una pausa uguale per tutti, perché il sito non si affatichi.",
         "La lunghezza della barra indica solo il tempo; accanto a ogni browser trovi quanti controlli ha superato.",
         "I controlli riguardano la versione del sito per computer: Chrome, Edge, Firefox e Safari.",
       ],
@@ -62,6 +63,7 @@
         "Su ogni computer i controlli vengono eseguiti uno dopo l'altro, come farebbe una persona: sul telefono aprono anche il menu mobile del sito.",
         "Per questo il tempo dei test è quello del dispositivo più lento, non la somma dei tempi.",
         "La durata totale comprende anche la preparazione delle macchine (avvio e compilazione del progetto) e la pubblicazione dei risultati sul sito.",
+        "Come al campetto si gioca a turno: una partita alla volta e, tra un avvio e l'altro dei visitatori, 10 minuti per pulire il parquet. È una pausa uguale per tutti, perché il sito non si affatichi.",
         "L'iPad viene provato sia in verticale sia in orizzontale; il Galaxy Fold solo nelle esecuzioni automatiche.",
       ],
       sections: { desktop: "💻 Computer", mobile: "📱 Smartphone e tablet" },
@@ -114,6 +116,9 @@
       courtBusy: "🏀 Il campetto è occupato: c'è una partita in corso. Quando finisce, puoi scendere in campo anche tu; intanto puoi seguirla qui sotto.",
       courtCleaning: (min) =>
         `🧹 Stanno pulendo il parquet: il campetto torna libero tra ${min === 1 ? "1 minuto" : `${min} minuti`}. Intanto puoi guardare i risultati dell'ultima partita.`,
+      // Spiegazioni nel tooltip del pulsante: perché si aspetta, con le regole del campetto.
+      whyBusy: "Come al campetto, si gioca una partita alla volta: chi arriva aspetta il suo turno a bordo campo. La partita dura circa 3 minuti.",
+      whyCleaning: "Una partita ogni 10 minuti, uguale per tutti i visitatori: tra una partita e l'altra si pulisce il parquet, così il sito non si affatica e il campetto resta aperto a tutti.",
       live: {
         starting: "Richiesta inviata",
         setup: "Preparazione dei browser",
@@ -178,6 +183,7 @@
         "On each computer the checks run one after another, always in the same order.",
         "That's why the test time is the one of the slowest browser, not the sum of the times.",
         "The total time also includes preparing the machines (start-up, building the project, installing Edge) and publishing the results on the site.",
+        "Like at the playground, everyone takes turns: one game at a time and, between visitors' runs, 10 minutes to mop the court. The pause is the same for everyone, so the site doesn't get tired.",
         "A bar's length shows only the time; next to each browser you'll find how many checks it passed.",
         "The checks cover the desktop version of the site: Chrome, Edge, Firefox and Safari.",
       ],
@@ -187,6 +193,7 @@
         "On each computer the checks run one after another, like a person would: on phones they also open the site's mobile menu.",
         "That's why the test time is the one of the slowest device, not the sum of the times.",
         "The total time also includes preparing the machines (start-up and building the project) and publishing the results on the site.",
+        "Like at the playground, everyone takes turns: one game at a time and, between visitors' runs, 10 minutes to mop the court. The pause is the same for everyone, so the site doesn't get tired.",
         "The iPad is tested both in portrait and in landscape; the Galaxy Fold only in the automatic runs.",
       ],
       sections: { desktop: "💻 Desktop", mobile: "📱 Phones and tablets" },
@@ -237,6 +244,8 @@
       courtBusy: "🏀 The court is busy: a game is on. When it ends, you can play too; meanwhile, you can follow it below.",
       courtCleaning: (min) =>
         `🧹 They're mopping the court: it's free again in ${min === 1 ? "1 minute" : `${min} minutes`}. Meanwhile, have a look at the results of the last game.`,
+      whyBusy: "Like at the playground, one game at a time: whoever arrives waits for their turn courtside. A game lasts about 3 minutes.",
+      whyCleaning: "One game every 10 minutes, the same for every visitor: between games the court gets mopped, so the site doesn't get tired and the court stays open to everyone.",
       live: {
         starting: "Request sent",
         setup: "Preparing the browsers",
@@ -954,6 +963,7 @@
     const st = state.status;
     let label = state.view === "all" ? T.runNow : T.runOn(BROWSER_NAMES[state.view]);
     let disabled = false;
+    let why = ""; // spiegazione nel tooltip quando il pulsante aspetta
 
     if (!st || !st.configured) {
       return ""; // senza token il pulsante non viene mostrato
@@ -963,11 +973,15 @@
     } else if (state.phase !== "idle" || (st.run && st.run.status !== "completed")) {
       label = T.running;
       disabled = true;
+      why = T.whyBusy;
     } else if (st.cooldownRemaining > 0) {
       label = T.availableIn(Math.ceil(st.cooldownRemaining / 60));
       disabled = true;
+      why = T.whyCleaning;
     }
-    return `<button type="button" class="qlp-run" ${disabled ? "disabled" : ""}>${esc(label)}</button>`;
+    const button = `<button type="button" class="qlp-run" ${disabled ? "disabled" : ""}>${esc(label)}</button>`;
+    // Un pulsante disattivato non mostra il tooltip in tutti i browser: lo mettiamo sul contenitore.
+    return why ? `<span class="qlp-run-wrap" title="${esc(why)}">${button}</span>` : button;
   }
 
 
