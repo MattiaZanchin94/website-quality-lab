@@ -38,7 +38,7 @@ jobs:
   test:
     name: Test (${{ matrix.browser }})
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     strategy:
       fail-fast: false # se un browser fallisce, gli altri continuano
       matrix:
@@ -66,19 +66,28 @@ jobs:
         run: dotnet build --configuration Release
 
       # Per Edge serve il browser vero di Microsoft: --force lo reinstalla se è già presente sul runner.
+      # A volte il download o apt restano appesi senza fallire: ogni tentativo ha 3 minuti, poi si riprova (max 3).
       - name: Install Playwright browser
         run: |
           if [ "${{ matrix.browser }}" = "msedge" ]; then
-            pwsh bin/Release/net10.0/playwright.ps1 install --with-deps --force msedge
+            args=(install --with-deps --force msedge)
           else
-            pwsh bin/Release/net10.0/playwright.ps1 install --with-deps "$BROWSER"
+            args=(install --with-deps "$BROWSER")
           fi
+          for attempt in 1 2 3; do
+            if timeout 180 pwsh bin/Release/net10.0/playwright.ps1 "${args[@]}"; then
+              exit 0
+            fi
+            echo "::warning::Installazione del browser non riuscita (tentativo $attempt di 3), riprovo."
+          done
+          exit 1
 
       # continue-on-error: anche se un test fallisce vogliamo pubblicare i risultati.
       # Il logger GitHubActions è il secondo report: una tabella nel "Job summary".
       - name: Run E2E tests
         id: tests
         continue-on-error: true
+        timeout-minutes: 10 # se si blocca, i risultati raccolti fin lì vengono comunque caricati
         env:
           # Avanzamento in diretta sulla pagina Playground (vedi Tests/LiveProgress.cs).
           # Se il secret non è configurato, l'invio è disattivato e i test girano normalmente.
@@ -106,7 +115,9 @@ jobs:
   # 2) Unisce i risultati dei browser, genera i report e pubblica i dati per il sito.
   publish:
     needs: test
-    if: ${{ !cancelled() }} # pubblichiamo anche quando qualche test è fallito
+    # always(): pubblichiamo anche quando un test fallisce o un browser va in timeout;
+    # per un browser mancante summary.mjs tiene i risultati dell'esecuzione precedente.
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
