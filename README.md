@@ -48,7 +48,7 @@ Level 2 needs tests that share no state and don't depend on each other's order. 
 
 ## What is tested
 
-Each check runs on every browser and device (13 checks × 9 = 117 runs). On phones and tablets the navigation tests open the site's mobile menu first, like a person would, when the site shows it (an iPad in landscape gets the desktop menu).
+Each check runs on every browser and device (14 checks × 9 = 126 runs). On phones and tablets the navigation tests open the site's mobile menu first, like a person would, when the site shows it (an iPad in landscape gets the desktop menu).
 
 | Type | Area | Check | Priority |
 |---|---|---|---|
@@ -60,6 +60,7 @@ Each check runs on every browser and device (13 checks × 9 = 117 runs). On phon
 | Regression | Playground | The Playground page is also available in English | Major |
 | Regression | Playground | Results can be viewed for a single browser | Major |
 | Regression | Playground | Checks can be filtered by priority | Major |
+| Regression | Privacy | The site respects cookie consent (GDPR): no Google Analytics or external services before the choice and after rejecting | Major |
 
 **Smoke** checks cover the essentials and are the first to flag a problem; **regression** checks go deeper into single features. Both are NUnit categories, so they can be run separately.
 
@@ -87,7 +88,8 @@ Each check runs on every browser and device (13 checks × 9 = 117 runs). On phon
 │   ├── WebsiteAvailabilityTests.cs   # smoke
 │   ├── NavigationTests.cs            # smoke, data-driven from the menu definition
 │   ├── ArticleTests.cs               # regression
-│   └── PlaygroundTests.cs            # regression: the page that shows these results
+│   ├── PlaygroundTests.cs            # regression: the page that shows these results
+│   └── PrivacyTests.cs               # regression: cookie consent (GDPR)
 ├── scripts/summary.mjs               # test results → summary.json for the website
 ├── scripts/notify.mjs                # Telegram alert when the smoke checks change state
 ├── wordpress/quality-lab-playground/ # WordPress plugin (shortcode + REST proxy)

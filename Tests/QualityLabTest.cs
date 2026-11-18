@@ -112,24 +112,47 @@ public abstract class QualityLabTest : PageTest
     // ---------------------------------------------------------------------
     // Il sito mostra un banner per il consenso ai cookie (GDPR). Il test si comporta come
     // un visitatore attento alla privacy: quando il banner compare e copre la pagina, lo rifiuta.
-    // Le richieste verso Google Analytics vengono comunque bloccate, così le esecuzioni
+    // Gli invii di dati a Google Analytics vengono comunque bloccati, così le esecuzioni
     // automatiche (ogni ora, su nove browser) non finiscono nelle statistiche delle visite.
+    // Lo script di Google (gtag.js) invece si carica: serve al controllo sulla privacy,
+    // che verifica che senza consenso non imposti cookie.
 
-    private static readonly Regex AnalyticsHosts =
-        new(@"^https?://([^/]+\.)?(google-analytics\.com|googletagmanager\.com|analytics\.google\.com)/", RegexOptions.Compiled);
+    // Solo gli indirizzi che ricevono i dati delle visite, non quello che fornisce lo script.
+    private static readonly Regex AnalyticsHits =
+        new(@"^https?://([^/]+\.)?(google-analytics\.com|analytics\.google\.com)/", RegexOptions.Compiled);
 
     // Testo del pulsante "rifiuta" nei banner più comuni, in italiano e in inglese.
     private static readonly Regex RejectCookies =
         new(@"^\s*(rifiuta|nega|solo (i cookie )?necessari|deny|reject|decline|only necessary)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    private ILocator? _rejectButton;
+
+    /// <summary>Invii a Google Analytics tentati durante il test (e bloccati), con il loro indirizzo completo.</summary>
+    protected List<string> BlockedAnalyticsHits { get; private set; } = [];
+
     private async Task HandleCookieBannerAsync()
     {
-        await Context.RouteAsync(AnalyticsHosts, route => route.AbortAsync());
+        // NUnit riusa la stessa istanza per i test di una classe: la lista riparte vuota a ogni test.
+        var hits = BlockedAnalyticsHits = [];
+        await Context.RouteAsync(AnalyticsHits, route =>
+        {
+            hits.Add(route.Request.Url);
+            return route.AbortAsync();
+        });
 
         // Playwright chiama questo gestore ogni volta che il banner è visibile prima di un'azione
         // (clic, attesa, verifica): funziona anche se il banner compare qualche secondo dopo.
-        var reject = Page.GetByRole(AriaRole.Button, new() { NameRegex = RejectCookies }).Filter(new() { Visible = true }).First;
-        await Page.AddLocatorHandlerAsync(reject, button => button.ClickAsync());
+        _rejectButton = Page.GetByRole(AriaRole.Button, new() { NameRegex = RejectCookies }).Filter(new() { Visible = true }).First;
+        await Page.AddLocatorHandlerAsync(_rejectButton, button => button.ClickAsync());
+    }
+
+    /// <summary>
+    /// Smette di rifiutare il banner in automatico: per i test che devono vederlo e sceglierlo da sé.
+    /// Va chiamato prima di aprire la pagina.
+    /// </summary>
+    protected async Task LetTestHandleCookieBannerAsync()
+    {
+        if (_rejectButton is not null) await Page.RemoveLocatorHandlerAsync(_rejectButton);
     }
 
     [TearDown]

@@ -48,7 +48,7 @@ Il livello 2 richiede test che non condividano stato e non dipendano dall'ordine
 
 ## Cosa viene verificato
 
-Ogni controllo gira su ogni browser e dispositivo (13 controlli × 9 = 117 esecuzioni). Su smartphone e tablet i test di navigazione aprono prima il menu mobile del sito, come farebbe una persona, quando il sito lo mostra (un iPad in orizzontale riceve il menu desktop).
+Ogni controllo gira su ogni browser e dispositivo (14 controlli × 9 = 126 esecuzioni). Su smartphone e tablet i test di navigazione aprono prima il menu mobile del sito, come farebbe una persona, quando il sito lo mostra (un iPad in orizzontale riceve il menu desktop).
 
 | Tipo | Area | Controllo | Priorità |
 |---|---|---|---|
@@ -60,6 +60,7 @@ Ogni controllo gira su ogni browser e dispositivo (13 controlli × 9 = 117 esecu
 | Regression | Playground | La pagina Playground è disponibile anche in inglese | Major |
 | Regression | Playground | Si possono vedere i risultati di un singolo browser | Major |
 | Regression | Playground | Si possono filtrare i controlli per priorità | Major |
+| Regression | Privacy | Il sito rispetta il consenso ai cookie (GDPR): niente Google Analytics né servizi esterni prima della scelta e dopo il rifiuto | Major |
 
 I controlli **smoke** coprono l'essenziale e sono i primi a segnalare un problema; quelli **regression** approfondiscono le singole funzionalità. Sono categorie NUnit, quindi si possono eseguire separatamente.
 
@@ -87,7 +88,8 @@ I controlli **smoke** coprono l'essenziale e sono i primi a segnalare un problem
 │   ├── WebsiteAvailabilityTests.cs   # smoke
 │   ├── NavigationTests.cs            # smoke, generati dalla definizione del menu
 │   ├── ArticleTests.cs               # regression
-│   └── PlaygroundTests.cs            # regression: la pagina che mostra questi risultati
+│   ├── PlaygroundTests.cs            # regression: la pagina che mostra questi risultati
+│   └── PrivacyTests.cs               # regression: consenso ai cookie (GDPR)
 ├── scripts/summary.mjs               # risultati dei test → summary.json per il sito
 ├── scripts/notify.mjs                # avviso su Telegram quando i controlli smoke cambiano stato
 ├── wordpress/quality-lab-playground/ # plugin WordPress (shortcode + proxy REST)
