@@ -44,19 +44,25 @@ public class NavigationTests : QualityLabTest
 
         await OpenAsync(BaseUrl);
 
-        // Su smartphone e tablet le voci sono nascoste dietro il pulsante "Menu di navigazione":
-        // lo apriamo come farebbe una persona. Le voci compaiono in un pannello dentro l'header.
-        // Solo se il pulsante c'è davvero: su un tablet in orizzontale il sito può mostrare il menu desktop.
-        if (IsMobileDevice)
-        {
-            var toggle = Page.Locator("header .navbar-toggle").Filter(new() { Visible = true });
-            if (await toggle.CountAsync() > 0) await toggle.First.ClickAsync();
-        }
-
         // Il tema ha due menu (desktop e mobile): prendiamo solo il link visibile nell'header.
         var menuLink = Page.Locator("header")
             .GetByRole(AriaRole.Link, new() { Name = menuLabel, Exact = true })
             .Filter(new() { Visible = true });
+        // Su smartphone e tablet le voci sono nascoste dietro il pulsante "Menu di navigazione".
+        var menuToggle = Page.Locator("header .navbar-toggle").Filter(new() { Visible = true });
+
+        // Prima di decidere aspettiamo la pagina vera: la voce di menu (menu desktop) oppure il pulsante
+        // del menu mobile. Subito dopo il caricamento l'hosting può far passare il browser dal suo
+        // controllo anti-bot automatico e poi riportarlo alla home: se controllassimo il pulsante in quel
+        // momento non lo troveremmo, e il menu resterebbe chiuso.
+        await Expect(menuLink.Or(menuToggle).First).ToBeVisibleAsync(new() { Timeout = 20_000 });
+
+        // Menu chiuso (smartphone, tablet in verticale): lo apriamo come farebbe una persona.
+        // Su un tablet in orizzontale il sito può mostrare direttamente il menu desktop.
+        if (await menuLink.CountAsync() == 0)
+        {
+            await menuToggle.First.ClickAsync();
+        }
 
         await menuLink.ClickAsync();
         await SkipIfBlockedByBotProtectionAsync();
