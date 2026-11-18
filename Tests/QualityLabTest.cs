@@ -198,13 +198,35 @@ public abstract class QualityLabTest : PageTest
     private static readonly Regex AutomaticCheck = new(@"/\.well-known/sgcaptcha/", RegexOptions.Compiled);
     private static readonly Regex Captcha = new(@"/\.well-known/captcha/", RegexOptions.Compiled);
 
-    /// <summary>Apre una pagina e ignora il test se l'hosting mostra un CAPTCHA.</summary>
+    /// <summary>
+    /// Apre una pagina e ignora il test se l'hosting mostra un CAPTCHA.
+    /// Se la connessione cade prima che il server risponda (errore di rete, non del sito),
+    /// riprova fino a 2 volte: un sito davvero irraggiungibile fa comunque fallire il test.
+    /// </summary>
     protected async Task<IResponse?> OpenAsync(string url)
     {
-        var response = await Page.GotoAsync(url);
-        await SkipIfBlockedByBotProtectionAsync();
-        return response;
+        const int attempts = 3;
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                var response = await Page.GotoAsync(url);
+                await SkipIfBlockedByBotProtectionAsync();
+                return response;
+            }
+            catch (PlaywrightException ex) when (attempt < attempts && DroppedConnection.IsMatch(ex.Message))
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2 * attempt));
+            }
+        }
     }
+
+    // Errori di trasporto che i browser danno quando la connessione si interrompe a metà
+    // (es. "HTTP/2 Error: NO_ERROR" di WebKit quando il server chiude il canale HTTP/2).
+    // Non comprendono gli errori che indicano un sito giù, come DNS o connessione rifiutata.
+    private static readonly Regex DroppedConnection = new(
+        @"HTTP/2 Error|ERR_CONNECTION_RESET|ERR_CONNECTION_CLOSED|ERR_HTTP2_PROTOCOL_ERROR|ERR_EMPTY_RESPONSE|NS_ERROR_NET_RESET|NS_ERROR_NET_INTERRUPT|network connection was lost",
+        RegexOptions.Compiled);
 
     /// <summary>
     /// Da chiamare dopo ogni azione che cambia pagina (es. un clic su un link).
