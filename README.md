@@ -1,6 +1,7 @@
 # Website Quality Lab
 
 [![E2E tests](https://github.com/MattiaZanchin94/website-quality-lab/actions/workflows/e2e-tests.yml/badge.svg)](https://github.com/MattiaZanchin94/website-quality-lab/actions/workflows/e2e-tests.yml)
+[![Release](https://img.shields.io/github/v/release/MattiaZanchin94/website-quality-lab)](https://github.com/MattiaZanchin94/website-quality-lab/releases/latest)
 [![Live results](https://img.shields.io/badge/live%20results-Playground-1d4ed8)](https://mattiazanchin.com/playground/)
 
 🇮🇹 [Leggi in italiano](README.it.md)
@@ -38,10 +39,10 @@ Parallelism works on two levels; this project currently uses the first one.
 
 | Level | Where | Status |
 |---|---|---|
-| **1. Across machines** | GitHub Actions starts one job per browser (`strategy.matrix`): four isolated machines that run at the same time | ✅ in use |
+| **1. Across machines** | GitHub Actions starts one job per browser or device (`strategy.matrix`): nine isolated machines that run at the same time | ✅ in use |
 | **2. Within a run** | NUnit runs several tests at the same time on one machine (`[Parallelizable]`, `[LevelOfParallelism]`) | next step |
 
-On each machine the tests run **sequentially**, so a run lasts as long as the **slowest browser**, not the sum of the four. The Playground page shows this as a per-browser duration chart.
+On each machine the tests run **sequentially**, so a run lasts as long as the **slowest machine**, not the sum of all of them. The Playground page shows this as a duration chart per browser (Desktop section) or per device (Phones and tablets section).
 
 Level 2 needs tests that share no state and don't depend on each other's order. These tests already qualify (they only read the site), but running many of them at once against the live site also has to account for the hosting provider's anti-bot protection.
 
@@ -72,7 +73,7 @@ Each check runs on every browser and device (13 checks × 9 = 117 runs). On phon
 | Browser automation | Playwright for .NET |
 | Test framework | NUnit 4 |
 | Reporting | GitHub Actions job summary |
-| CI/CD | GitHub Actions (browser matrix, scheduled and on-demand runs) |
+| CI/CD | GitHub Actions (browser and device matrix in the official Playwright container, scheduled and on-demand runs) |
 | Hosting of results | GitHub Pages |
 | Website integration | WordPress plugin (PHP, REST API, vanilla JS) |
 

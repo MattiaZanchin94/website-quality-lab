@@ -1,6 +1,7 @@
 # Website Quality Lab
 
 [![E2E tests](https://github.com/MattiaZanchin94/website-quality-lab/actions/workflows/e2e-tests.yml/badge.svg)](https://github.com/MattiaZanchin94/website-quality-lab/actions/workflows/e2e-tests.yml)
+[![Release](https://img.shields.io/github/v/release/MattiaZanchin94/website-quality-lab)](https://github.com/MattiaZanchin94/website-quality-lab/releases/latest)
 [![Risultati dal vivo](https://img.shields.io/badge/risultati%20dal%20vivo-Playground-1d4ed8)](https://mattiazanchin.com/playground/)
 
 🇬🇧 [Read in English](README.md)
@@ -38,10 +39,10 @@ Il parallelismo lavora su due livelli; questo progetto per ora usa il primo.
 
 | Livello | Dove | Stato |
 |---|---|---|
-| **1. Tra macchine** | GitHub Actions avvia un job per browser (`strategy.matrix`): quattro macchine isolate che lavorano contemporaneamente | ✅ in uso |
+| **1. Tra macchine** | GitHub Actions avvia un job per browser o dispositivo (`strategy.matrix`): nove macchine isolate che lavorano contemporaneamente | ✅ in uso |
 | **2. Dentro un'esecuzione** | NUnit esegue più test insieme sulla stessa macchina (`[Parallelizable]`, `[LevelOfParallelism]`) | prossimo passo |
 
-Su ogni macchina i test sono **sequenziali**: un'esecuzione dura quanto il **browser più lento**, non la somma dei quattro. La pagina Playground lo mostra con un grafico della durata per browser.
+Su ogni macchina i test sono **sequenziali**: un'esecuzione dura quanto la **macchina più lenta**, non la somma di tutte. La pagina Playground lo mostra con un grafico della durata per browser (sezione Computer) o per dispositivo (sezione Smartphone e tablet).
 
 Il livello 2 richiede test che non condividano stato e non dipendano dall'ordine di esecuzione. Questi test lo soddisfano già (leggono soltanto il sito), ma eseguirne molti insieme contro il sito reale deve tenere conto anche della protezione anti-bot dell'hosting.
 
@@ -72,7 +73,7 @@ I controlli **smoke** coprono l'essenziale e sono i primi a segnalare un problem
 | Automazione del browser | Playwright per .NET |
 | Test framework | NUnit 4 |
 | Reportistica | Job summary di GitHub Actions |
-| CI/CD | GitHub Actions (matrice di browser, esecuzioni programmate e su richiesta) |
+| CI/CD | GitHub Actions (matrice di browser e dispositivi nel contenitore ufficiale di Playwright, esecuzioni programmate e su richiesta) |
 | Pubblicazione dei risultati | GitHub Pages |
 | Integrazione con il sito | Plugin WordPress (PHP, REST API, JavaScript) |
 
