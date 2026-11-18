@@ -1,6 +1,6 @@
 # Website Quality Lab
 
-[![E2E tests](https://github.com/Zancus/website-quality-lab/actions/workflows/e2e-tests.yml/badge.svg)](https://github.com/Zancus/website-quality-lab/actions/workflows/e2e-tests.yml)
+[![E2E tests](https://github.com/MattiaZanchin94/website-quality-lab/actions/workflows/e2e-tests.yml/badge.svg)](https://github.com/MattiaZanchin94/website-quality-lab/actions/workflows/e2e-tests.yml)
 [![Live results](https://img.shields.io/badge/live%20results-Playground-1d4ed8)](https://mattiazanchin.com/playground/)
 
 🇮🇹 [Leggi in italiano](README.it.md)

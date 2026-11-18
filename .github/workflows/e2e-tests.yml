@@ -117,7 +117,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     env:
-      PAGES_URL: https://zancus.github.io/website-quality-lab
+      PAGES_URL: https://mattiazanchin94.github.io/website-quality-lab
       RESULTS_DIR: allure-results
 
     steps:
