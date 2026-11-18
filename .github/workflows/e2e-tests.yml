@@ -66,19 +66,29 @@ jobs:
         run: dotnet build --configuration Release
 
       # Per Edge serve il browser vero di Microsoft: --force lo reinstalla se è già presente sul runner.
-      # A volte il download o apt restano appesi senza fallire: ogni tentativo ha 3 minuti, poi si riprova (max 3).
+      # A volte un mirror Ubuntu smette di inviare dati e apt resta appeso senza fallire.
+      # - apt: timeout di rete e ripetizioni, così un download fermo fallisce e riprova da solo;
+      #   attesa del lock invece di un errore immediato.
+      # - ogni tentativo ha 4 minuti; se scade, si ferma anche apt-get (rimasto attivo col lock)
+      #   e si sistema dpkg prima di riprovare (max 3 tentativi).
       - name: Install Playwright browser
         run: |
+          printf '%s\n' 'Acquire::Retries "5";' 'Acquire::http::Timeout "30";' 'Acquire::https::Timeout "30";' 'DPkg::Lock::Timeout "120";' \
+            | sudo tee /etc/apt/apt.conf.d/99quality-lab > /dev/null
           if [ "${{ matrix.browser }}" = "msedge" ]; then
             args=(install --with-deps --force msedge)
           else
             args=(install --with-deps "$BROWSER")
           fi
           for attempt in 1 2 3; do
-            if timeout 180 pwsh bin/Release/net10.0/playwright.ps1 "${args[@]}"; then
+            if timeout 240 pwsh bin/Release/net10.0/playwright.ps1 "${args[@]}"; then
               exit 0
             fi
             echo "::warning::Installazione del browser non riuscita (tentativo $attempt di 3), riprovo."
+            sudo pkill -x apt-get || true
+            sudo pkill -x dpkg || true
+            sleep 5
+            sudo dpkg --configure -a || true
           done
           exit 1
 
