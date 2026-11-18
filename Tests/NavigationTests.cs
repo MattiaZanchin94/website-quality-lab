@@ -44,6 +44,15 @@ public class NavigationTests : QualityLabTest
 
         await OpenAsync(BaseUrl);
 
+        // Su smartphone e tablet le voci sono nascoste dietro il pulsante "Menu di navigazione":
+        // lo apriamo come farebbe una persona. Le voci compaiono in un pannello dentro l'header.
+        // Solo se il pulsante c'è davvero: su un tablet in orizzontale il sito può mostrare il menu desktop.
+        if (IsMobileDevice)
+        {
+            var toggle = Page.Locator("header .navbar-toggle").Filter(new() { Visible = true });
+            if (await toggle.CountAsync() > 0) await toggle.First.ClickAsync();
+        }
+
         // Il tema ha due menu (desktop e mobile): prendiamo solo il link visibile nell'header.
         var menuLink = Page.Locator("header")
             .GetByRole(AriaRole.Link, new() { Name = menuLabel, Exact = true })

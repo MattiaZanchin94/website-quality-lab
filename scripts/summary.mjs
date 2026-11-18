@@ -20,7 +20,7 @@ const results = await Promise.all(
 const label = (r, name) => r.labels?.find((l) => l.name === name)?.value ?? null;
 
 // Ogni controllo gira su più browser: raggruppiamo le esecuzioni per nome del controllo.
-const ALL_BROWSERS = ["chromium", "msedge", "firefox", "webkit"];
+const ALL_BROWSERS = ["chromium", "msedge", "firefox", "webkit", "iphone", "android", "fold", "ipad", "ipadland"];
 const PRIORITY_OF_SEVERITY = { blocker: "blocker", critical: "blocker", normal: "major", minor: "minor", trivial: "minor" };
 const SEVERITY_OF_STATUS = { passed: 0, skipped: 1, broken: 2, failed: 3 };
 const env = process.env;

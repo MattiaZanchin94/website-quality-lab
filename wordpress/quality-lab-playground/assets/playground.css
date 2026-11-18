@@ -83,8 +83,8 @@
 
 .qlp-chart { border: 1px solid var(--qlp-border); border-radius: 10px; padding: 12px 16px; margin: 0 0 16px; }
 .qlp-chart h4 { margin: 0 0 10px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--qlp-muted); }
-.qlp-bar-row { display: grid; grid-template-columns: 64px 1fr auto; align-items: center; gap: 10px; margin: 6px 0; font-size: 14px; }
-.qlp-bar-name { font-weight: 600; }
+.qlp-bar-row { display: grid; grid-template-columns: 92px 1fr auto; align-items: center; gap: 10px; margin: 6px 0; font-size: 14px; }
+.qlp-bar-name { font-weight: 600; white-space: nowrap; }
 .qlp-bar-track { height: 10px; background: #f1f2f4; border-radius: 999px; overflow: hidden; }
 .qlp-bar { display: block; height: 100%; border-radius: 999px; }
 /* Le barre mostrano solo il tempo: colore neutro, più scuro per il browser più lento.
@@ -115,7 +115,7 @@
 .qlp-modal form { display: flex; justify-content: flex-end; margin: 0; }
 @media (max-width: 600px) {
   /* Su schermi stretti il valore va sotto la barra, così la barra resta leggibile. */
-  .qlp-bar-row { grid-template-columns: 64px minmax(0, 1fr); row-gap: 2px; margin: 8px 0; }
+  .qlp-bar-row { grid-template-columns: 92px minmax(0, 1fr); row-gap: 2px; margin: 8px 0; }
   .qlp-bar-value { grid-column: 2; white-space: normal; }
   .qlp-num { font-size: 24px; white-space: nowrap; }
   .qlp-stat:last-child { grid-column: 1 / -1; }
@@ -129,13 +129,21 @@
 .qlp-legend .qlp-type, .qlp-legend .qlp-prio { margin-left: 0; }
 .qlp-type-smoke { color: #9a3412; background: #ffedd5; }
 .qlp-type-regression { color: #3730a3; background: #e0e7ff; }
+/* Legenda: due gruppi con titolo (tipologia di test, priorità), affiancati su desktop. */
 .qlp-legend {
-  list-style: none; margin: 0 0 4px; padding: 0; color: var(--qlp-muted); font-size: 13px;
-  display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px;
+  margin: 0 0 4px; color: var(--qlp-muted); font-size: 13px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px;
 }
+.qlp-legend h5 {
+  margin: 0 0 6px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--qlp-muted);
+}
+.qlp-legend ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .qlp-legend li { display: flex; align-items: baseline; gap: 8px; }
 .qlp-legend li > span:first-child { flex-shrink: 0; min-width: 84px; text-align: center; }
 @media (max-width: 600px) { .qlp-legend { grid-template-columns: 1fr; } }
+
+/* Titolo della sezione dei risultati, sotto pulsante e avanzamento. */
+.qlp-results-title { margin: 4px 0 12px; font-size: 18px; }
 
 /* Priorità: Blocker (rosso scuro) e Major (grigio-blu), su ogni controllo e nella legenda. */
 .qlp-prio {
@@ -216,3 +224,10 @@
 @media (prefers-reduced-motion: reduce) {
   .qlp-spin, .qlp-pulse, .qlp-b-running, .qlp-ok .qlp-dot { animation: none; }
 }
+
+/* ---------- Dispositivi emulati (iPhone, Android, iPad) ---------- */
+.qlp-tab-sep { width: 1px; align-self: stretch; margin: 4px 4px; background: var(--qlp-border); flex-shrink: 0; }
+.qlp-tab-device { font-style: italic; }
+.qlp-b-device { font-style: italic; }
+/* Nota per chi visita da smartphone o tablet: i controlli non girano sul suo dispositivo. */
+.qlp-device-note { margin: -8px 0 20px; padding: 8px 12px; border-radius: 8px; background: #eef4ff; color: #1e3a8a; font-size: 13px; }

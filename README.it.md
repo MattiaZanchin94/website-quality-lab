@@ -5,7 +5,7 @@
 
 🇬🇧 [Read in English](README.md)
 
-Suite di test end-to-end che controlla di continuo il mio sito, [mattiazanchin.com](https://mattiazanchin.com), su quattro browser, e ne pubblica i risultati sul sito stesso.
+Suite di test end-to-end che controlla di continuo il mio sito, [mattiazanchin.com](https://mattiazanchin.com), su quattro browser desktop e cinque dispositivi mobili emulati, e ne pubblica i risultati sul sito stesso.
 
 Nella pagina **[Playground](https://mattiazanchin.com/playground/)** chiunque può vedere gli ultimi risultati, scritti in linguaggio semplice, per tutti i browser o uno alla volta, e **avviare una nuova verifica** su tutti i browser o su uno solo. La pagina è disponibile in italiano e in inglese.
 
@@ -20,15 +20,15 @@ flowchart LR
     S["Ogni ora<br/>push su main"] --> GA
     subgraph GA["GitHub Actions"]
         direction TB
-        T1["Test · Chromium"] & T4["Test · Edge"] & T2["Test · Firefox"] & T3["Test · WebKit"] --> P["Pubblicazione<br/>summary.json"]
+        T1["Test · Chromium"] & T4["Test · Edge"] & T2["Test · Firefox"] & T3["Test · WebKit"] & T5["Test · iPhone, Android, Galaxy Fold,<br/>iPad verticale/orizzontale (emulati)"] --> P["Pubblicazione<br/>summary.json"]
     end
     P -- "summary.json" --> GP["GitHub Pages"]
     GP -- "fetch" --> V
-    T1 & T4 & T2 & T3 -. "Playwright" .-> SITE["mattiazanchin.com"]
+    T1 & T4 & T2 & T3 & T5 -. "Playwright" .-> SITE["mattiazanchin.com"]
 ```
 
 1. I test **Playwright + NUnit** (C#) aprono il sito reale e si comportano come un utente: aprono pagine, cliccano le voci del menu, leggono gli articoli.
-2. **GitHub Actions** li esegue ogni ora, a ogni push e su richiesta, su **Chromium, Microsoft Edge, Firefox e WebKit** in parallelo. Le esecuzioni su richiesta possono riguardare un solo browser.
+2. **GitHub Actions** li esegue ogni ora, a ogni push e su richiesta, su **Chromium, Microsoft Edge, Firefox e WebKit**, più **iPhone, Android, un Galaxy Z Fold chiuso e iPad in verticale e in orizzontale**, emulati con i profili dei dispositivi di Playwright (dimensioni dello schermo, touch, user agent), tutti in parallelo. Le esecuzioni su richiesta possono riguardare un solo browser o dispositivo.
 3. Un job di pubblicazione unisce i risultati dei browser e pubblica un `summary.json` compatto su **GitHub Pages**.
 4. Un piccolo **plugin WordPress** mostra quel riepilogo nella pagina Playground e permette ai visitatori di avviare i test, passando da un proxy lato server che tiene privato il token GitHub e consente al massimo un'esecuzione ogni 10 minuti.
 
@@ -47,7 +47,7 @@ Il livello 2 richiede test che non condividano stato e non dipendano dall'ordine
 
 ## Cosa viene verificato
 
-Ogni controllo gira su tutti e quattro i browser (13 controlli × 4 browser = 52 esecuzioni).
+Ogni controllo gira su ogni browser e dispositivo (13 controlli × 9 = 117 esecuzioni). Su smartphone e tablet i test di navigazione aprono prima il menu mobile del sito, come farebbe una persona, quando il sito lo mostra (un iPad in orizzontale riceve il menu desktop).
 
 | Tipo | Area | Controllo | Priorità |
 |---|---|---|---|
@@ -106,6 +106,9 @@ dotnet test
 
 # Scelta del browser
 BROWSER=webkit dotnet test
+
+# Dispositivi emulati: iphone, android, fold, ipad, ipadland (WebKit per iPhone/iPad, Chromium per Android/Fold)
+QLP_DEVICE=iphone BROWSER=webkit dotnet test
 
 # Microsoft Edge (Chromium con il channel msedge; Edge deve essere installato)
 dotnet test -- Playwright.LaunchOptions.Channel=msedge

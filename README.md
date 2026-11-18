@@ -5,7 +5,7 @@
 
 🇮🇹 [Leggi in italiano](README.it.md)
 
-End-to-end test suite that continuously checks my website, [mattiazanchin.com](https://mattiazanchin.com), on four browsers, and publishes the results on the site itself.
+End-to-end test suite that continuously checks my website, [mattiazanchin.com](https://mattiazanchin.com), on four desktop browsers and five emulated mobile devices, and publishes the results on the site itself.
 
 On the **[Playground](https://mattiazanchin.com/playground/)** page anyone can see the latest results in plain language, for all browsers or one at a time, and **start a new test run** on every browser or on a single one. The page is available in Italian and English.
 
@@ -20,15 +20,15 @@ flowchart LR
     S["Schedule (hourly)<br/>push to main"] --> GA
     subgraph GA["GitHub Actions"]
         direction TB
-        T1["Tests · Chromium"] & T4["Tests · Edge"] & T2["Tests · Firefox"] & T3["Tests · WebKit"] --> P["Publish<br/>summary.json"]
+        T1["Tests · Chromium"] & T4["Tests · Edge"] & T2["Tests · Firefox"] & T3["Tests · WebKit"] & T5["Tests · iPhone, Android, Galaxy Fold,<br/>iPad portrait/landscape (emulated)"] --> P["Publish<br/>summary.json"]
     end
     P -- "summary.json" --> GP["GitHub Pages"]
     GP -- "fetch" --> V
-    T1 & T4 & T2 & T3 -. "Playwright" .-> SITE["mattiazanchin.com"]
+    T1 & T4 & T2 & T3 & T5 -. "Playwright" .-> SITE["mattiazanchin.com"]
 ```
 
 1. **Playwright + NUnit** tests (C#) open the real site and act like a user: open pages, click menu items, read articles.
-2. **GitHub Actions** runs them every hour, on every push, and on demand, on **Chromium, Microsoft Edge, Firefox and WebKit** in parallel. On demand runs can target a single browser.
+2. **GitHub Actions** runs them every hour, on every push, and on demand, on **Chromium, Microsoft Edge, Firefox and WebKit**, plus **iPhone, Android, a folded Galaxy Z Fold and iPad in portrait and landscape**, emulated with Playwright device profiles (screen size, touch, user agent), all in parallel. On demand runs can target a single browser or device.
 3. A publish job merges the results of the browsers and deploys a compact `summary.json` to **GitHub Pages**.
 4. A small **WordPress plugin** shows that summary on the Playground page and lets visitors start a run, through a server-side proxy that keeps the GitHub token private and allows at most one run every 10 minutes.
 
@@ -47,7 +47,7 @@ Level 2 needs tests that share no state and don't depend on each other's order. 
 
 ## What is tested
 
-Each check runs on all four browsers (13 checks × 4 browsers = 52 runs).
+Each check runs on every browser and device (13 checks × 9 = 117 runs). On phones and tablets the navigation tests open the site's mobile menu first, like a person would, when the site shows it (an iPad in landscape gets the desktop menu).
 
 | Type | Area | Check | Priority |
 |---|---|---|---|
@@ -106,6 +106,9 @@ dotnet test
 
 # Choose the browser
 BROWSER=webkit dotnet test
+
+# Emulated devices: iphone, android, fold, ipad, ipadland (WebKit for iPhone/iPad, Chromium for Android/Fold)
+QLP_DEVICE=iphone BROWSER=webkit dotnet test
 
 # Microsoft Edge (Chromium with the msedge channel; Edge must be installed)
 dotnet test -- Playwright.LaunchOptions.Channel=msedge

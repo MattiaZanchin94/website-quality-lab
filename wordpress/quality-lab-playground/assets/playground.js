@@ -32,6 +32,9 @@
       duration: "tempo di verifica",
       durationAll: "tempo di verifica (browser in parallelo)",
       chartTitle: "Durata per browser",
+      resultsTitle: "Risultati dell'ultima esecuzione",
+      legendTypes: "Tipologia di test",
+      legendPriorities: "Priorità",
       slowest: "il più lento",
       chartNote: "I browser vengono controllati contemporaneamente, ognuno su un computer separato: la verifica dura quanto il browser più lento.",
       howTitle: "Come funziona?",
@@ -41,9 +44,19 @@
         "Su ogni computer i controlli vengono eseguiti uno dopo l'altro, sempre nello stesso ordine.",
         "Per questo il tempo di verifica è quello del browser più lento, non la somma dei tempi.",
         "La lunghezza della barra indica solo il tempo; accanto a ogni browser trovi quanti controlli ha superato.",
+        "Smartphone e tablet sono emulati: lo stesso motore del browser con schermo, touch e identità di un iPhone 15, di un Pixel 7 (Android), di un Galaxy Z Fold 7 chiuso e di un iPad Pro 11 in verticale e in orizzontale. Non sono dispositivi veri.",
       ],
-      matrix: (checks, n, names) => `${checks} controlli, ripetuti su ${n} browser: ${names}`,
-      engines: { chromium: "motore Chromium (Chrome)", msedge: "Microsoft Edge (motore Chromium)", firefox: "motore Gecko (Firefox)", webkit: "motore WebKit (Safari)" },
+      deviceLong: { iphone: "iPhone", android: "Android", fold: "Galaxy Fold chiuso", ipad: "iPad verticale", ipadland: "iPad orizzontale" },
+      mobileVisitor: "Stai usando uno smartphone o un tablet: i controlli non girano sul tuo dispositivo, ma su computer di GitHub, che emulano anche smartphone e tablet.",
+      matrix: (checks, browsers, devices) =>
+        `${checks} controlli, ripetuti su ${browsers.length} browser (${browsers.join(", ")})` +
+        (devices.length ? ` e ${devices.length} dispositivi emulati (${devices.join(", ")})` : ""),
+      engines: {
+        chromium: "motore Chromium (Chrome)", msedge: "Microsoft Edge (motore Chromium)", firefox: "motore Gecko (Firefox)", webkit: "motore WebKit (Safari)",
+        iphone: "iPhone 15 emulato (motore WebKit)", android: "Android, Pixel 7 emulato (motore Chromium)",
+        fold: "Galaxy Z Fold 7 chiuso emulato, schermo largo 360 px (motore Chromium)",
+        ipad: "iPad Pro 11 in verticale emulato (motore WebKit)", ipadland: "iPad Pro 11 in orizzontale emulato (motore WebKit)",
+      },
       allBrowsers: "Tutti i browser",
       tabsLabel: "Scegli il browser",
       noResults: "Nessun risultato ancora per questo browser: avvia i controlli per ottenerli.",
@@ -109,6 +122,9 @@
       duration: "check duration",
       durationAll: "check time (browsers in parallel)",
       chartTitle: "Duration per browser",
+      resultsTitle: "Latest run results",
+      legendTypes: "Test type",
+      legendPriorities: "Priority",
       slowest: "the slowest",
       chartNote: "The browsers are checked at the same time, each on a separate computer: the run lasts as long as the slowest browser.",
       howTitle: "How does it work?",
@@ -118,9 +134,19 @@
         "On each computer the checks run one after another, always in the same order.",
         "That's why the check time is the one of the slowest browser, not the sum of the times.",
         "A bar's length shows only the time; next to each browser you'll find how many checks it passed.",
+        "Phones and tablets are emulated: the same browser engine with the screen, touch and identity of an iPhone 15, a Pixel 7 (Android), a folded Galaxy Z Fold 7 and an iPad Pro 11 in portrait and landscape. They are not real devices.",
       ],
-      matrix: (checks, n, names) => `${checks} checks, repeated on ${n} browsers: ${names}`,
-      engines: { chromium: "Chromium engine (Chrome)", msedge: "Microsoft Edge (Chromium engine)", firefox: "Gecko engine (Firefox)", webkit: "WebKit engine (Safari)" },
+      deviceLong: { iphone: "iPhone", android: "Android", fold: "folded Galaxy Fold", ipad: "iPad portrait", ipadland: "iPad landscape" },
+      mobileVisitor: "You're on a smartphone or tablet: the checks don't run on your device but on GitHub computers, which also emulate phones and tablets.",
+      matrix: (checks, browsers, devices) =>
+        `${checks} checks, repeated on ${browsers.length} browsers (${browsers.join(", ")})` +
+        (devices.length ? ` and ${devices.length} emulated devices (${devices.join(", ")})` : ""),
+      engines: {
+        chromium: "Chromium engine (Chrome)", msedge: "Microsoft Edge (Chromium engine)", firefox: "Gecko engine (Firefox)", webkit: "WebKit engine (Safari)",
+        iphone: "Emulated iPhone 15 (WebKit engine)", android: "Emulated Android, Pixel 7 (Chromium engine)",
+        fold: "Emulated folded Galaxy Z Fold 7, 360 px wide screen (Chromium engine)",
+        ipad: "Emulated iPad Pro 11 in portrait (WebKit engine)", ipadland: "Emulated iPad Pro 11 in landscape (WebKit engine)",
+      },
       allBrowsers: "All browsers",
       tabsLabel: "Choose the browser",
       noResults: "No results yet for this browser: run the checks to get them.",
@@ -273,7 +299,17 @@
   const STATUS_ICON = { passed: "✓", failed: "✗", broken: "!", skipped: "–" };
 
   // Nomi familiari per il pubblico; il tooltip indica il motore di rendering reale.
-  const BROWSER_NAMES = { chromium: "Chrome", msedge: "Edge", firefox: "Firefox", webkit: "Safari" };
+  // Nomi brevi per schede e badge; il tooltip (T.engines) spiega il dispositivo per esteso.
+  const BROWSER_NAMES = {
+    chromium: "Chrome", msedge: "Edge", firefox: "Firefox", webkit: "Safari",
+    iphone: "iPhone", android: "Android", fold: "Galaxy Fold", ipad: "iPad", ipadland: "iPad ↔",
+  };
+  // Smartphone e tablet emulati: mostrati con uno stile diverso dai browser desktop.
+  const DEVICES = ["iphone", "android", "fold", "ipad", "ipadland"];
+  const isDevice = (b) => DEVICES.includes(b);
+  // Il visitatore usa uno smartphone o un tablet? (schermo stretto o puntamento con il dito)
+  const isMobileVisitor = () =>
+    window.matchMedia("(max-width: 900px)").matches || window.matchMedia("(pointer: coarse)").matches;
   const TYPE_NAMES = { smoke: "Smoke", regression: "Regression" };
 
   function renderType(type) {
@@ -304,17 +340,26 @@
   }
 
   // Legenda come elenco: un tipo o una priorità per riga, con la sua spiegazione.
+  // Legenda in due gruppi con il loro titolo: tipologia di test e priorità.
   function renderLegend(s) {
-    const items = [];
+    const groups = [];
     if (s.tests.some((t) => TYPE_NAMES[t.type])) {
-      items.push([renderType("smoke"), T.types.smoke[1]], [renderType("regression"), T.types.regression[1]]);
+      groups.push([T.legendTypes, [[renderType("smoke"), T.types.smoke[1]], [renderType("regression"), T.types.regression[1]]]]);
     }
     if (s.tests.some((t) => t.priority)) {
-      items.push([renderPriority("blocker"), T.priorities.blocker[1]], [renderPriority("major"), T.priorities.major[1]]);
+      groups.push([T.legendPriorities, [[renderPriority("blocker"), T.priorities.blocker[1]], [renderPriority("major"), T.priorities.major[1]]]]);
     }
-    if (!items.length) return "";
-    return `<ul class="qlp-legend">${items.map(([chip, text]) => `<li>${chip}<span>${esc(text)}</span></li>`).join("")}</ul>`;
+    if (!groups.length) return "";
+    return `<div class="qlp-legend">${groups
+      .map(
+        ([title, items]) => `<div class="qlp-legend-group">
+          <h5>${esc(title)}</h5>
+          <ul>${items.map(([chip, text]) => `<li>${chip}<span>${esc(text)}</span></li>`).join("")}</ul>
+        </div>`,
+      )
+      .join("")}</div>`;
   }
+
 
 
   function renderBrowsers(t, info) {
@@ -326,7 +371,7 @@
         const st = liveStateOf(info, t, b) || t.browsers[b];
         const word = { passed: T.passed, skipped: T.notVerifiable, pending: T.live.pending, running: T.live.running }[st] || T.notPassed;
         const hint = `${T.engines[b]}: ${word}`;
-        return `<span class="qlp-b qlp-b-${esc(st)}" title="${esc(hint)}">${BROWSER_NAMES[b]}</span>`;
+        return `<span class="qlp-b qlp-b-${esc(st)}${isDevice(b) ? " qlp-b-device" : ""}" title="${esc(hint)}">${BROWSER_NAMES[b]}</span>`;
       })
       .join("")}</span>`;
   }
@@ -357,7 +402,7 @@
   // Da qui ricaviamo lo stato di ogni controllo e una barra che si riempie in modo continuo,
   // agganciata ai dati reali: non supera mai il punto successivo e non torna mai indietro.
 
-  const ALL_TEST_BROWSERS = ["chromium", "msedge", "firefox", "webkit"];
+  const ALL_TEST_BROWSERS = ["chromium", "msedge", "firefox", "webkit", "iphone", "android", "fold", "ipad", "ipadland"];
   const SETUP_MS = 75000; // durata tipica della preparazione dei browser su GitHub
   const PUBLISH_MS = 30000; // durata tipica della pubblicazione dei risultati
   const live = { seen: {}, allDoneAt: null, shown: 0, target: 0, startedAt: 0, since: 0, lastFrame: 0 };
@@ -377,7 +422,7 @@
 
   // Browser coinvolti nell'esecuzione: dal titolo (es. "E2E · website · firefox"), altrimenti tutti.
   function runBrowsers(run) {
-    const m = run && run.title && run.title.match(/·\s*(chromium|msedge|firefox|webkit)\s*$/);
+    const m = run && run.title && run.title.match(/·\s*(chromium|msedge|firefox|webkit|iphone|android|fold|ipad|ipadland)\s*$/);
     return m ? [m[1]] : ALL_TEST_BROWSERS;
   }
 
@@ -545,7 +590,10 @@
           const ok = s.tests.every((t) => !t.browsers || !(key in t.browsers) || isOk(t.browsers[key]));
           dot = `<span class="qlp-tab-dot ${ok ? "qlp-ok" : "qlp-ko"}"></span>`;
         }
-        return `<button type="button" role="tab" class="qlp-tab" data-view="${esc(key)}" aria-selected="${selected}">${dot}${esc(name)}</button>`;
+        // Prima dei dispositivi emulati, un separatore; il tooltip spiega che sono emulati.
+        const device = isDevice(key);
+        const sep = key === DEVICES[0] ? '<span class="qlp-tab-sep" aria-hidden="true"></span>' : "";
+        return `${sep}<button type="button" role="tab" class="qlp-tab${device ? " qlp-tab-device" : ""}" data-view="${esc(key)}" aria-selected="${selected}"${device ? ` title="${esc(T.engines[key])}"` : ""}>${dot}${esc(name)}</button>`;
       })
       .join("")}</div>`;
   }
@@ -573,6 +621,7 @@
 
     const body = d.tests.length
       ? `
+        <h3 class="qlp-results-title">${esc(T.resultsTitle)}</h3>
         <div class="qlp-head">
           <span class="qlp-pill ${ok ? "qlp-ok" : "qlp-ko"}">
             <span class="qlp-dot"></span>${esc(ok ? T.siteOk : T.siteKo)}
@@ -589,7 +638,11 @@
         ${
           state.view === "all" && s.browsers && s.browsers.length > 1
             ? `<p class="qlp-meta qlp-matrix">${esc(
-                T.matrix(s.checks, s.browsers.length, s.browsers.map((b) => BROWSER_NAMES[b] || b).join(", ")),
+                T.matrix(
+                  s.checks,
+                  s.browsers.filter((b) => !isDevice(b)).map((b) => BROWSER_NAMES[b] || b),
+                  s.browsers.filter(isDevice).map((b) => T.deviceLong[b] || BROWSER_NAMES[b]),
+                ),
               )}</p>`
             : ""
         }
@@ -639,6 +692,7 @@
         <div class="qlp-actions">
           ${renderButton()}
         </div>
+        ${isMobileVisitor() ? `<p class="qlp-device-note">${esc(T.mobileVisitor)}</p>` : ""}
         ${renderLiveProgress()}
         ${state.message ? `<p class="qlp-message qlp-message-${state.messageKind}" role="status">${esc(state.message)}</p>` : ""}
         ${body}

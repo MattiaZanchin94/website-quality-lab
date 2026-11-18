@@ -38,15 +38,51 @@ public abstract class QualityLabTest : PageTest
     // Edge è Chromium con un "channel" diverso, impostato dalla riga di comando:
     //   dotnet test -- Playwright.LaunchOptions.Channel=msedge
 
-    /// <summary>Il browser reale: chromium, firefox, webkit oppure msedge.</summary>
+    // ---------------------------------------------------------------------
+    // Dispositivi emulati (smartphone e tablet)
+    // ---------------------------------------------------------------------
+    // Con QLP_DEVICE=iphone|android|ipad|fold|ipadland i test girano con dimensioni dello schermo, touch e
+    // "carta d'identità" del browser di quel dispositivo. È un'emulazione: il motore è quello
+    // del browser indicato da BROWSER (WebKit per iPhone e iPad, Chromium per Android), non un telefono vero.
+    private static readonly Dictionary<string, string> Devices = new()
+    {
+        ["iphone"] = "iPhone 15",
+        ["android"] = "Pixel 7",
+        ["ipad"] = "iPad Pro 11",
+        ["fold"] = "Galaxy Z Fold 7 Cover",       // pieghevole chiuso: 360 px, il telefono più stretto
+        ["ipadland"] = "iPad Pro 11 landscape",   // tablet in orizzontale: 1194 px
+    };
+
+    /// <summary>Dispositivo emulato (iphone, android, ipad, fold, ipadland) oppure null per il desktop.</summary>
+    protected static string? Device =>
+        Environment.GetEnvironmentVariable("QLP_DEVICE") is { Length: > 0 } d && Devices.ContainsKey(d) ? d : null;
+
+    /// <summary>True su smartphone e tablet emulati, dove il menu del sito è "a panino".</summary>
+    protected static bool IsMobileDevice => Device is not null;
+
+    public override BrowserNewContextOptions ContextOptions() =>
+        Device is { } d ? Playwright.Devices[Devices[d]] : base.ContextOptions();
+
+    /// <summary>Il "browser" del risultato: chromium, msedge, firefox, webkit oppure un dispositivo emulato.</summary>
     protected string ActualBrowser =>
-        PlaywrightSettingsProvider.LaunchOptions?.Channel is { Length: > 0 } channel ? channel : BrowserName;
+        Device ?? (PlaywrightSettingsProvider.LaunchOptions?.Channel is { Length: > 0 } channel ? channel : BrowserName);
 
     /// <summary>Identificativo stabile del test (classe, metodo e dati), uguale su tutti i browser.</summary>
     protected static string TestKey => TestContext.CurrentContext.Test.FullName;
 
+    // Il CAPTCHA può comparire in qualsiasi momento, non solo all'apertura della pagina
+    // (es. la home si carica e qualche secondo dopo SiteGround reindirizza alla verifica).
+    // Osserviamo quindi ogni cambio di pagina per tutta la durata del test.
+    private bool _blockedByCaptcha;
+
+    // Quando l'hosting blocca questa macchina con un CAPTCHA, di solito lo fa per tutta l'esecuzione:
+    // i controlli successivi di questo browser vengono saltati subito, invece di aspettare ognuno il timeout.
+    // È "static" perché vale per tutti i test del processo (un processo = un browser su GitHub Actions).
+    private static bool _hostBlockedThisBrowser;
+
+    // Un solo [SetUp]: con più metodi nella stessa classe NUnit non garantisce l'ordine.
     [SetUp]
-    public async Task TagBrowser()
+    public async Task StartTest()
     {
         // Il browser diventa un parametro del test: in Allure lo stesso test su
         // più browser risulta come esecuzioni distinte, ognuna con il suo storico.
@@ -55,22 +91,18 @@ public abstract class QualityLabTest : PageTest
         // La chiave serve alla pagina Playground per collegare l'avanzamento in diretta ai risultati.
         AllureApi.AddLabel("test_key", TestKey);
 
-        await LiveProgress.ReportAsync(ActualBrowser, TestKey, "running");
-    }
+        if (_hostBlockedThisBrowser)
+        {
+            Assert.Ignore($"Non verificabile: l'hosting ha già bloccato questo browser con un CAPTCHA ({ActualBrowser}).");
+        }
 
-    // Il CAPTCHA può comparire in qualsiasi momento, non solo all'apertura della pagina
-    // (es. la home si carica e qualche secondo dopo SiteGround reindirizza alla verifica).
-    // Osserviamo quindi ogni cambio di pagina per tutta la durata del test.
-    private bool _blockedByCaptcha;
-
-    [SetUp]
-    public void WatchForBotProtection()
-    {
         _blockedByCaptcha = false;
         Page.FrameNavigated += (_, frame) =>
         {
             if (frame == Page.MainFrame && Captcha.IsMatch(frame.Url)) _blockedByCaptcha = true;
         };
+
+        await LiveProgress.ReportAsync(ActualBrowser, TestKey, "running");
     }
 
     [TearDown]
@@ -98,6 +130,7 @@ public abstract class QualityLabTest : PageTest
         var blocked = _blockedByCaptcha || Captcha.IsMatch(Page.Url) || AutomaticCheck.IsMatch(Page.Url);
         if (blocked && result.ResultState.Status == TestStatus.Failed)
         {
+            _hostBlockedThisBrowser = true; // i prossimi controlli di questo browser verranno saltati subito
             result.SetResult(ResultState.Ignored,
                 $"Non verificabile: la protezione anti-bot dell'hosting ha mostrato un CAPTCHA ({ActualBrowser}).");
         }
@@ -167,6 +200,7 @@ public abstract class QualityLabTest : PageTest
 
         if (Captcha.IsMatch(Page.Url) || AutomaticCheck.IsMatch(Page.Url))
         {
+            _hostBlockedThisBrowser = true; // i prossimi controlli di questo browser verranno saltati subito
             Assert.Ignore($"Non verificabile: la protezione anti-bot dell'hosting ha mostrato un CAPTCHA ({ActualBrowser}).");
         }
     }
