@@ -32,6 +32,11 @@
       duration: "tempo di verifica",
       durationAll: "tempo di verifica (browser in parallelo)",
       durationAllMobile: "tempo di verifica (dispositivi in parallelo)",
+      totalDuration: "durata totale su GitHub",
+      testsPart: (time, parallel) => `di cui test: ${time}${parallel ? ` (${parallel})` : ""}`,
+      parallelBrowsers: "browser in parallelo",
+      parallelDevices: "dispositivi in parallelo",
+      overhead: (time) => `Al tempo dei test si aggiungono ${time} per preparare le macchine e pubblicare i risultati: è la durata totale indicata sopra.`,
       chartTitle: "Durata per browser",
       chartTitleMobile: "Durata per dispositivo",
       resultsTitle: "Risultati dell'ultima esecuzione",
@@ -46,7 +51,8 @@
       how: [
         "A ogni verifica GitHub Actions avvia un computer separato per ogni browser, e partono tutti insieme.",
         "Su ogni computer i controlli vengono eseguiti uno dopo l'altro, sempre nello stesso ordine.",
-        "Per questo il tempo di verifica è quello del browser più lento, non la somma dei tempi.",
+        "Per questo il tempo dei test è quello del browser più lento, non la somma dei tempi.",
+        "La durata totale comprende anche la preparazione delle macchine (avvio, compilazione del progetto, installazione di Edge) e la pubblicazione dei risultati sul sito.",
         "La lunghezza della barra indica solo il tempo; accanto a ogni browser trovi quanti controlli ha superato.",
         "I controlli riguardano la versione del sito per computer: Chrome, Edge, Firefox e Safari.",
       ],
@@ -54,7 +60,8 @@
         "A ogni verifica GitHub Actions avvia un computer separato per ogni dispositivo, e partono tutti insieme.",
         "I dispositivi sono emulati: lo stesso motore del browser (Safari per iPhone e iPad, Chrome per Android) con schermo, touch e identità di un iPhone 15, di un Pixel 7, di un iPad Pro 11 e di un Galaxy Z Fold 7 chiuso. Non sono dispositivi veri.",
         "Su ogni computer i controlli vengono eseguiti uno dopo l'altro, come farebbe una persona: sul telefono aprono anche il menu mobile del sito.",
-        "Per questo il tempo di verifica è quello del dispositivo più lento, non la somma dei tempi.",
+        "Per questo il tempo dei test è quello del dispositivo più lento, non la somma dei tempi.",
+        "La durata totale comprende anche la preparazione delle macchine (avvio e compilazione del progetto) e la pubblicazione dei risultati sul sito.",
         "L'iPad viene provato sia in verticale sia in orizzontale; il Galaxy Fold solo nelle esecuzioni automatiche.",
       ],
       sections: { desktop: "💻 Computer", mobile: "📱 Smartphone e tablet" },
@@ -147,6 +154,11 @@
       duration: "check duration",
       durationAll: "check time (browsers in parallel)",
       durationAllMobile: "check time (devices in parallel)",
+      totalDuration: "total time on GitHub",
+      testsPart: (time, parallel) => `tests: ${time}${parallel ? ` (${parallel})` : ""}`,
+      parallelBrowsers: "browsers in parallel",
+      parallelDevices: "devices in parallel",
+      overhead: (time) => `On top of the tests, ${time} go into preparing the machines and publishing the results: that's the total time shown above.`,
       chartTitle: "Duration per browser",
       chartTitleMobile: "Duration per device",
       resultsTitle: "Latest run results",
@@ -161,7 +173,8 @@
       how: [
         "For every run, GitHub Actions starts a separate computer for each browser, and they all start together.",
         "On each computer the checks run one after another, always in the same order.",
-        "That's why the check time is the one of the slowest browser, not the sum of the times.",
+        "That's why the test time is the one of the slowest browser, not the sum of the times.",
+        "The total time also includes preparing the machines (start-up, building the project, installing Edge) and publishing the results on the site.",
         "A bar's length shows only the time; next to each browser you'll find how many checks it passed.",
         "The checks cover the desktop version of the site: Chrome, Edge, Firefox and Safari.",
       ],
@@ -169,7 +182,8 @@
         "For every run, GitHub Actions starts a separate computer for each device, and they all start together.",
         "The devices are emulated: the same browser engine (Safari for iPhone and iPad, Chrome for Android) with the screen, touch and identity of an iPhone 15, a Pixel 7, an iPad Pro 11 and a folded Galaxy Z Fold 7. They are not real devices.",
         "On each computer the checks run one after another, like a person would: on phones they also open the site's mobile menu.",
-        "That's why the check time is the one of the slowest device, not the sum of the times.",
+        "That's why the test time is the one of the slowest device, not the sum of the times.",
+        "The total time also includes preparing the machines (start-up and building the project) and publishing the results on the site.",
         "The iPad is tested both in portrait and in landscape; the Galaxy Fold only in the automatic runs.",
       ],
       sections: { desktop: "💻 Desktop", mobile: "📱 Phones and tablets" },
@@ -338,7 +352,9 @@
           </div>`,
         )
         .join("")}
-      <p class="qlp-chart-note">${esc(isMobileSection() ? T.chartNoteMobile : T.chartNote)}</p>
+      <p class="qlp-chart-note">${esc(isMobileSection() ? T.chartNoteMobile : T.chartNote)}${
+        s.totalMs && s.totalMs > max ? " " + esc(T.overhead(minutes(s.totalMs - max))) : ""
+      }</p>
       <button type="button" class="qlp-how-link" aria-haspopup="dialog">${esc(T.howTitle)}</button>
     </div>`;
   }
@@ -432,6 +448,8 @@
     return {
       ...s,
       startedAt: (latestRun && latestRun.startedAt) || s.startedAt,
+      // Durata totale su GitHub dell'ultima esecuzione che ha toccato questa sezione.
+      totalMs: (latestRun && latestRun.totalMs) || null,
       trigger: (latestRun && latestRun.trigger) || s.trigger,
       tests,
       runs,
@@ -724,6 +742,7 @@
         total: s.total,
         successRate: s.successRate,
         durationMs: totalDuration(s),
+        totalMs: s.totalMs || null,
         startedAt: s.startedAt,
         trigger: s.trigger,
         status: s.status,
@@ -741,6 +760,7 @@
       total: tests.length,
       successRate: verified ? Math.round((passed / verified) * 1000) / 10 : 0,
       durationMs: run.durationMs ?? 0,
+      totalMs: run.totalMs || null,
       startedAt: run.startedAt ?? s.startedAt,
       trigger: run.trigger ?? s.trigger,
       status: verified && passed === verified ? "passed" : "failed",
@@ -773,6 +793,17 @@
         return `<button type="button" role="tab" class="qlp-tab" data-view="${esc(key)}" aria-selected="${selected}"${hint}>${dot}${esc(name)}</button>`;
       })
       .join("")}</div>`;
+  }
+
+  // Tempo: la durata totale su GitHub (quella che aspetta chi avvia i controlli) e, sotto,
+  // il tempo dei soli test. I riepiloghi più vecchi non hanno la durata totale: solo i test.
+  function renderDurationStat(d) {
+    const parallel = state.view === "all" ? (isMobileSection() ? T.parallelDevices : T.parallelBrowsers) : "";
+    if (!d.totalMs) {
+      const label = state.view === "all" ? (isMobileSection() ? T.durationAllMobile : T.durationAll) : T.duration;
+      return `<div class="qlp-stat"><span class="qlp-num">${minutes(d.durationMs)}</span><span class="qlp-label">${esc(label)}</span></div>`;
+    }
+    return `<div class="qlp-stat"><span class="qlp-num">${minutes(d.totalMs)}</span><span class="qlp-label">${esc(T.totalDuration)}</span><span class="qlp-sub">${esc(T.testsPart(minutes(d.durationMs), parallel))}</span></div>`;
   }
 
   function renderStatus(t) {
@@ -809,7 +840,7 @@
         <div class="qlp-stats">
           <div class="qlp-stat"><span class="qlp-num">${d.passed}/${d.total}</span><span class="qlp-label">${esc(T.checksPassed)}</span></div>
           <div class="qlp-stat"><span class="qlp-num">${d.successRate.toLocaleString(LANG)}%</span><span class="qlp-label">${esc(T.successRate)}</span></div>
-          <div class="qlp-stat"><span class="qlp-num">${minutes(d.durationMs)}</span><span class="qlp-label">${esc(state.view === "all" ? (isMobileSection() ? T.durationAllMobile : T.durationAll) : T.duration)}</span></div>
+          ${renderDurationStat(d)}
         </div>
         ${d.skipped ? `<p class="qlp-blocked">${esc(T.blockedNote(d.skipped))}</p>` : ""}
         ${

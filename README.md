@@ -42,7 +42,7 @@ Parallelism works on two levels; this project currently uses the first one.
 | **1. Across machines** | GitHub Actions starts one job per browser or device (`strategy.matrix`): nine isolated machines that run at the same time | ✅ in use |
 | **2. Within a run** | NUnit runs several tests at the same time on one machine (`[Parallelizable]`, `[LevelOfParallelism]`) | next step |
 
-On each machine the tests run **sequentially**, so a run lasts as long as the **slowest machine**, not the sum of all of them. The Playground page shows this as a duration chart per browser (Desktop section) or per device (Phones and tablets section).
+On each machine the tests run **sequentially**, so a run lasts as long as the **slowest machine**, not the sum of all of them. The Playground page shows this as a duration chart per browser (Desktop section) or per device (Phones and tablets section), next to the **total time on GitHub**, which also includes preparing the machines and publishing the results.
 
 Level 2 needs tests that share no state and don't depend on each other's order. These tests already qualify (they only read the site), but running many of them at once against the live site also has to account for the hosting provider's anti-bot protection.
 

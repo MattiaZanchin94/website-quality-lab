@@ -134,6 +134,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+      actions: read # per leggere l'ora di inizio dell'esecuzione
       pages: write
       id-token: write
     environment:
@@ -183,10 +184,16 @@ jobs:
           retention-days: 30
 
       # Su GitHub Pages pubblichiamo solo i dati che servono alla pagina Playground.
+      # RUN_STARTED_AT: quando GitHub ha avviato questa esecuzione (dopo l'eventuale coda).
+      # Serve a mostrare sulla Playground la durata totale, non solo il tempo dei test.
       - name: Prepare public data
         env:
           RUN_TRIGGER: ${{ github.event_name == 'workflow_dispatch' && inputs.source || github.event_name }}
+          GH_TOKEN: ${{ github.token }}
         run: |
+          export RUN_STARTED_AT=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}" | jq -r '.run_started_at // empty') || true
+          echo "Esecuzione avviata alle: ${RUN_STARTED_AT:-sconosciuto}"
           mkdir -p public
           node scripts/summary.mjs "$RESULTS_DIR" public/summary.json previous-summary.json
           cp history.jsonl public/history.jsonl

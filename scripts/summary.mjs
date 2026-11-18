@@ -67,10 +67,17 @@ for (const r of results) {
 
 // Le esecuzioni di questo run, per browser.
 const runUrl = env.GITHUB_RUN_ID ? `${env.GITHUB_SERVER_URL}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}` : null;
+// Durata totale dell'esecuzione su GitHub: dall'avvio (RUN_STARTED_AT, letto dal workflow)
+// a ora, quando i risultati vengono pubblicati. Comprende preparazione delle macchine,
+// compilazione, test e pubblicazione: è il tempo che aspetta chi avvia i controlli.
+const runStartedAt = env.RUN_STARTED_AT ? Date.parse(env.RUN_STARTED_AT) : NaN;
+const totalMs = Number.isFinite(runStartedAt) ? Math.max(0, Date.now() - runStartedAt) : null;
+
 const runInfo = (rs) => ({
   startedAt: new Date(Math.min(...rs.map((r) => r.start))).toISOString(),
   // Dentro un browser i test sono sequenziali: la durata è la somma dei singoli test.
   durationMs: rs.reduce((sum, r) => sum + (r.stop - r.start), 0),
+  totalMs,
   trigger: env.RUN_TRIGGER ?? "local",
   commit: env.GITHUB_SHA?.slice(0, 7) ?? null,
   runUrl,
@@ -149,12 +156,13 @@ const summary = {
   checks: tests.length,
   browsers,
   ranNow, // i browser eseguiti in quest'ultimo run
-  // I browser girano in parallelo, ognuno sulla sua macchina: la verifica dura quanto il più lento.
-  // Usiamo la durata di ogni browser (non gli orari) perché i browser possono venire da run diversi.
-  ...slowest(runs),
+  // I browser girano in parallelo, ognuno sulla sua macchina: i test durano quanto il più lento
+  // tra quelli eseguiti in quest'ultimo run (i risultati conservati da run precedenti non contano).
+  ...slowest(Object.fromEntries(ranNow.map((b) => [b, runs[b]]))),
   // Dati dell'ultimo run (per tutti i browser vedi "runs").
   startedAt: current.startedAt,
   durationMs: current.durationMs,
+  totalMs, // durata totale su GitHub (null se non disponibile)
   trigger: current.trigger,
   commit: current.commit,
   runUrl,
