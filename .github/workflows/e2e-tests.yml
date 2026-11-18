@@ -40,6 +40,12 @@ jobs:
     name: Test (${{ matrix.browser }})
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    # Immagine ufficiale di Playwright (stessa versione del pacchetto NuGet): Chromium, Firefox e
+    # WebKit con tutte le dipendenze di sistema sono già installati, quindi non si scarica nulla
+    # dai mirror Ubuntu (che a volte si bloccavano). Gira come root: HOME=/root serve a Firefox.
+    container:
+      image: mcr.microsoft.com/playwright/dotnet:v1.64.1-noble
+      options: --ipc=host
     strategy:
       fail-fast: false # se un browser fallisce, gli altri continuano
       matrix:
@@ -48,6 +54,7 @@ jobs:
       # Motore di Playwright: Edge è Chromium con il channel "msedge".
       BROWSER: ${{ matrix.browser == 'msedge' && 'chromium' || matrix.browser }}
       CHANNEL_ARGS: ${{ matrix.browser == 'msedge' && '-- Playwright.LaunchOptions.Channel=msedge' || '' }}
+      HOME: /root
 
     steps:
       - name: Checkout
@@ -61,30 +68,24 @@ jobs:
       - name: Build
         run: dotnet build --configuration Release
 
-      # Per Edge serve il browser vero di Microsoft: --force lo reinstalla se è già presente sul runner.
-      # A volte un mirror Ubuntu smette di inviare dati e apt resta appeso senza fallire.
-      # - apt: timeout di rete e ripetizioni, così un download fermo fallisce e riprova da solo;
-      #   attesa del lock invece di un errore immediato.
-      # - ogni tentativo ha 4 minuti; se scade, si ferma anche apt-get (rimasto attivo col lock)
-      #   e si sistema dpkg prima di riprovare (max 3 tentativi).
-      - name: Install Playwright browser
+      # Solo Edge va installato: è il browser vero di Microsoft, non incluso nell'immagine.
+      # Arriva dal repository di Microsoft; ogni tentativo ha 4 minuti, al massimo 3 tentativi.
+      # Usiamo il driver Node incluso nel pacchetto Playwright (nell'immagine non serve PowerShell).
+      - name: Install Microsoft Edge
+        if: matrix.browser == 'msedge'
         run: |
           printf '%s\n' 'Acquire::Retries "5";' 'Acquire::http::Timeout "30";' 'Acquire::https::Timeout "30";' 'DPkg::Lock::Timeout "120";' \
-            | sudo tee /etc/apt/apt.conf.d/99quality-lab > /dev/null
-          if [ "${{ matrix.browser }}" = "msedge" ]; then
-            args=(install --with-deps --force msedge)
-          else
-            args=(install --with-deps "$BROWSER")
-          fi
+            > /etc/apt/apt.conf.d/99quality-lab
+          driver=bin/Release/net10.0/.playwright
           for attempt in 1 2 3; do
-            if timeout 240 pwsh bin/Release/net10.0/playwright.ps1 "${args[@]}"; then
+            if timeout 240 "$driver/node/linux-x64/node" "$driver/package/cli.js" install --force msedge; then
               exit 0
             fi
-            echo "::warning::Installazione del browser non riuscita (tentativo $attempt di 3), riprovo."
-            sudo pkill -x apt-get || true
-            sudo pkill -x dpkg || true
+            echo "::warning::Installazione di Edge non riuscita (tentativo $attempt di 3), riprovo."
+            pkill -x apt-get || true
+            pkill -x dpkg || true
             sleep 5
-            sudo dpkg --configure -a || true
+            dpkg --configure -a || true
           done
           exit 1
 
