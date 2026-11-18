@@ -33,6 +33,7 @@
       durationAll: "tempo di verifica (browser in parallelo)",
       chartTitle: "Durata per browser",
       resultsTitle: "Risultati dell'ultima esecuzione",
+      casesTitle: (n) => `Casi di test (${n})`,
       legendTypes: "Tipologia di test",
       legendPriorities: "Priorità",
       slowest: "il più lento",
@@ -124,6 +125,7 @@
       durationAll: "check time (browsers in parallel)",
       chartTitle: "Duration per browser",
       resultsTitle: "Latest run results",
+      casesTitle: (n) => `Test cases (${n})`,
       legendTypes: "Test type",
       legendPriorities: "Priority",
       slowest: "the slowest",
@@ -733,6 +735,7 @@
 
         ${state.view === "all" ? renderChart(s) : ""}
         ${renderLegend(s)}
+        <h3 class="qlp-results-title qlp-cases-title">${esc(T.casesTitle(listed.length))}</h3>
         ${renderPriorityFilter(d.tests)}
         <div class="qlp-tests">
           ${Object.entries(byFeature)
