@@ -20,7 +20,8 @@ const results = await Promise.all(
 const label = (r, name) => r.labels?.find((l) => l.name === name)?.value ?? null;
 
 // Ogni controllo gira su più browser: raggruppiamo le esecuzioni per nome del controllo.
-const ALL_BROWSERS = ["chromium", "msedge", "firefox", "webkit", "iphone", "android", "fold", "ipad", "ipadland"];
+// I browser pubblicati sulla Playground (per ora solo quelli per computer).
+const ALL_BROWSERS = ["chromium", "msedge", "firefox", "webkit"];
 const PRIORITY_OF_SEVERITY = { blocker: "blocker", critical: "blocker", normal: "major", minor: "minor", trivial: "minor" };
 const SEVERITY_OF_STATUS = { passed: 0, skipped: 1, broken: 2, failed: 3 };
 const env = process.env;
@@ -83,7 +84,7 @@ if (previousFile && !isFullRun) {
   const prev = JSON.parse(await readFile(previousFile, "utf8").catch(() => "null"));
   for (const pt of prev?.tests ?? []) {
     for (const [b, status] of Object.entries(pt.browsers ?? {})) {
-      if (ranNow.includes(b)) continue;
+      if (ranNow.includes(b) || !ALL_BROWSERS.includes(b)) continue;
       const id = pt.key ?? pt.title;
       const t = byKey.get(id) ?? { ...pt, browsers: {}, durations: {} };
       t.browsers[b] = status;
@@ -92,7 +93,7 @@ if (previousFile && !isFullRun) {
     }
   }
   for (const b of prev?.browsers ?? []) {
-    if (ranNow.includes(b)) continue;
+    if (ranNow.includes(b) || !ALL_BROWSERS.includes(b)) continue;
     // I summary vecchi non hanno "runs": usiamo i dati generali di quel run.
     runs[b] = prev.runs?.[b] ?? { startedAt: prev.startedAt, durationMs: prev.durationMs, trigger: prev.trigger, commit: prev.commit, runUrl: prev.runUrl };
   }

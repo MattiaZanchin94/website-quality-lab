@@ -45,19 +45,19 @@
         "Su ogni computer i controlli vengono eseguiti uno dopo l'altro, sempre nello stesso ordine.",
         "Per questo il tempo di verifica è quello del browser più lento, non la somma dei tempi.",
         "La lunghezza della barra indica solo il tempo; accanto a ogni browser trovi quanti controlli ha superato.",
-        "Smartphone e tablet sono emulati: lo stesso motore del browser con schermo, touch e identità di un iPhone 15, di un Pixel 7 (Android), di un Galaxy Z Fold 7 chiuso e di un iPad Pro 11 in verticale e in orizzontale. Non sono dispositivi veri.",
+        "I controlli riguardano la versione del sito per computer: Chrome, Edge, Firefox e Safari.",
       ],
       // Varianti di ogni browser: il computer e i dispositivi emulati con lo stesso motore.
       variantNames: { chromium: "computer", android: "Android", fold: "Galaxy Fold chiuso", msedge: "computer", firefox: "computer", webkit: "computer", iphone: "iPhone", ipad: "iPad verticale", ipadland: "iPad orizzontale" },
       failedOn: (names) => `non superato su: ${names}`,
-      mobileVisitor: "Stai usando uno smartphone o un tablet: i controlli non girano sul tuo dispositivo, ma su computer di GitHub, che emulano anche smartphone e tablet.",
+      mobileVisitor: "Stai usando uno smartphone o un tablet: i controlli non girano sul tuo dispositivo, ma su computer di GitHub, e verificano la versione del sito per computer.",
       matrix: (checks, browsers) =>
-        `${checks} controlli, ripetuti su ${browsers.length} browser (${browsers.join(", ")}), anche su smartphone e tablet emulati`,
+        `${checks} controlli, ripetuti su ${browsers.length} browser per computer (${browsers.join(", ")})`,
       engines: {
-        chromium: "Chrome (motore Chromium): computer, più Android e Galaxy Fold chiuso emulati",
+        chromium: "Google Chrome (motore Chromium): computer",
         msedge: "Microsoft Edge (motore Chromium): computer",
         firefox: "Firefox (motore Gecko): computer",
-        webkit: "Safari (motore WebKit): computer, più iPhone e iPad verticale e orizzontale emulati",
+        webkit: "Safari (motore WebKit): computer",
       },
       allBrowsers: "Tutti i browser",
       tabsLabel: "Scegli il browser",
@@ -137,18 +137,18 @@
         "On each computer the checks run one after another, always in the same order.",
         "That's why the check time is the one of the slowest browser, not the sum of the times.",
         "A bar's length shows only the time; next to each browser you'll find how many checks it passed.",
-        "Phones and tablets are emulated: the same browser engine with the screen, touch and identity of an iPhone 15, a Pixel 7 (Android), a folded Galaxy Z Fold 7 and an iPad Pro 11 in portrait and landscape. They are not real devices.",
+        "The checks cover the desktop version of the site: Chrome, Edge, Firefox and Safari.",
       ],
       variantNames: { chromium: "computer", android: "Android", fold: "folded Galaxy Fold", msedge: "computer", firefox: "computer", webkit: "computer", iphone: "iPhone", ipad: "iPad portrait", ipadland: "iPad landscape" },
       failedOn: (names) => `not passed on: ${names}`,
-      mobileVisitor: "You're on a smartphone or tablet: the checks don't run on your device but on GitHub computers, which also emulate phones and tablets.",
+      mobileVisitor: "You're on a smartphone or tablet: the checks don't run on your device but on GitHub computers, and they check the desktop version of the site.",
       matrix: (checks, browsers) =>
-        `${checks} checks, repeated on ${browsers.length} browsers (${browsers.join(", ")}), also on emulated phones and tablets`,
+        `${checks} checks, repeated on ${browsers.length} desktop browsers (${browsers.join(", ")})`,
       engines: {
-        chromium: "Chrome (Chromium engine): computer, plus emulated Android and folded Galaxy Fold",
+        chromium: "Google Chrome (Chromium engine): computer",
         msedge: "Microsoft Edge (Chromium engine): computer",
         firefox: "Firefox (Gecko engine): computer",
-        webkit: "Safari (WebKit engine): computer, plus emulated iPhone and iPad in portrait and landscape",
+        webkit: "Safari (WebKit engine): computer",
       },
       allBrowsers: "All browsers",
       tabsLabel: "Choose the browser",
@@ -305,17 +305,18 @@
   // Nomi brevi per schede e badge; il tooltip (T.engines) spiega il dispositivo per esteso.
   const BROWSER_NAMES = { chromium: "Chrome", msedge: "Edge", firefox: "Firefox", webkit: "Safari" };
 
-  // Smartphone e tablet sono emulati con lo stesso motore di un browser: nella pagina li mostriamo
-  // dentro quel browser. I dati (summary.json, avanzamento) restano separati per variante.
+  // Varianti mostrate dentro ogni browser. Per ora solo i browser per computer: i dispositivi
+  // emulati (android, fold, iphone, ipad, ipadland) andranno in una sezione dedicata e qui
+  // vengono ignorati anche se presenti in summary.json.
   const FAMILIES = {
-    chromium: ["chromium", "android", "fold"],
+    chromium: ["chromium"],
     msedge: ["msedge"],
     firefox: ["firefox"],
-    webkit: ["webkit", "iphone", "ipad", "ipadland"],
+    webkit: ["webkit"],
   };
   const FAMILY_OF = Object.fromEntries(Object.entries(FAMILIES).flatMap(([f, vs]) => vs.map((v) => [v, f])));
   // Valore da inviare per avviare i controlli su un browser e su tutte le sue varianti.
-  const RUN_KEY = { chromium: "chrome", msedge: "msedge", firefox: "firefox", webkit: "safari" };
+  const RUN_KEY = { chromium: "chromium", msedge: "msedge", firefox: "firefox", webkit: "webkit" };
 
   // Esito di un browser a partire dalle sue varianti: un fallimento vince; i controlli bloccati
   // dal CAPTCHA contano solo se nessuna variante è stata verificata.
@@ -443,7 +444,7 @@
         const word = { passed: T.passed, skipped: T.notVerifiable, pending: T.live.pending, running: T.live.running }[st] || T.notPassed;
         const failed = (t.failedVariants && t.failedVariants[f]) || [];
         // Se qualcosa non va, il tooltip dice su quale variante (es. "non superato su: iPhone").
-        const detail = failed.length && !["pending", "running"].includes(st) ? T.failedOn(failed.map((v) => T.variantNames[v]).join(", ")) : word;
+        const detail = failed.length && FAMILIES[f].length > 1 && !["pending", "running"].includes(st) ? T.failedOn(failed.map((v) => T.variantNames[v]).join(", ")) : word;
         return `<span class="qlp-b qlp-b-${esc(st)}" title="${esc(`${T.engines[f]} · ${detail}`)}">${BROWSER_NAMES[f]}</span>`;
       })
       .join("")}</span>`;
