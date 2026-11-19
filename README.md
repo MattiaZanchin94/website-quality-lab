@@ -8,7 +8,7 @@
 
 End-to-end test suite that continuously checks my website, [mattiazanchin.com](https://mattiazanchin.com), on four desktop browsers and five emulated phones and tablets, checks its security with passive checks and publishes the results on the site itself.
 
-On the **[Playground](https://mattiazanchin.com/playground/)** page anyone can see the latest results in plain language and **start a new test run**. The page recognises the visitor's device: from a computer it opens the desktop browsers, from an iPhone, an Android phone or an iPad it opens and runs that emulated device. A third section, *Security*, shows the checks on encrypted connection, certificate and site protections. The page is available in Italian and English.
+On the **[Playground](https://mattiazanchin.com/playground/)** page anyone can see the latest results in plain language and **start a new test run**. The page recognises the visitor's device: from a computer it opens the desktop browsers, from an iPhone, an Android phone or an iPad it opens and runs that emulated device. The page has two tabs, **Functionality** (desktop, phones and tablets) and **Security** (encrypted connection, certificate and site protections), each with its own run button: the two checks can even run at the same time. The Security tab has its own address, [/playground/#security](https://mattiazanchin.com/en/playground/#security). The page is available in Italian and English.
 
 ---
 
@@ -31,7 +31,7 @@ flowchart LR
 1. **Playwright + NUnit** tests (C#) open the real site and act like a user: open pages, click menu items, read articles.
 2. **GitHub Actions** runs them every hour, on every push, and on demand, on **Chromium (Chrome), Microsoft Edge, Firefox and WebKit (Safari)**, plus **iPhone, Android, iPad in portrait and landscape and a folded Galaxy Z Fold**, emulated with Playwright device profiles (screen size, touch, user agent), all in parallel. On demand runs can target the desktop browsers, the devices, or a single one of them.
 3. A publish job merges the results of the browsers and deploys a compact `summary.json` to **GitHub Pages**.
-4. A small **WordPress plugin** shows that summary on the Playground page and lets visitors start a run, through a server-side proxy that keeps the GitHub token private and allows at most one run every 10 minutes.
+4. A small **WordPress plugin** shows that summary on the Playground page and lets visitors start a run, through a server-side proxy that keeps the GitHub token private and allows at most one run every 10 minutes for functionality and every 5 for security.
 
 ## Parallel execution
 
@@ -148,6 +148,8 @@ dotnet test --filter TestCategory=Security
 - **Tests respect the cookie banner.** The site asks for cookie consent: the tests behave like a privacy-conscious visitor and reject the banner when it appears. Data sent to Google Analytics is blocked anyway, so automated runs never show up in the visit statistics.
 - **Privacy is verified, not assumed.** The cookie consent check looks at what really happens in the browser: before the choice and after rejecting, there must be no Google Analytics cookies or external services, and Google must receive only consent-denied signals. Running from servers in the United States, it found that outside Europe statistics started before consent: the site now asks everyone for consent, wherever they are.
 - **Security checked without attacking.** The security checks are passive: they read redirects, headers, the certificate and public files like a browser would, with no aggressive scanning (on shared hosting that would amount to an attack). The first check, which follows every redirect one hop at a time, found that only the home page switched to HTTPS: the other pages also opened unencrypted. The server now enforces HTTPS everywhere.
+- **Two independent courts.** Functionality and Security each have their own queue on GitHub Actions (`concurrency` per court), their own pause between runs and their own progress bar: a security check (about a minute) can run while a browser run is in progress. Publishing the results stays in single file, and `summary.mjs` only updates the checks that ran again: a game on one court or one device doesn't wipe the other results.
+- **Statistics without personal data.** The Playground sends two events to Google Analytics, `playground_tab` (which tab is opened) and `playground_run` (which check is started). They go through the site's own Google Analytics, so they respect the choice made in the cookie banner.
 - **Fix first, then publish.** The weaknesses found (a username derivable from the API, missing headers, pages over http) were fixed before showing the checks on the Playground: a public page must not become a map of the site's weak spots.
 - **A network hiccup is not a site outage.** If the connection drops while a page is opening, the test retries up to twice; a site that is really unreachable still fails the check.
 - **The checks never trigger themselves.** The Playground test verifies that the run button exists but never clicks it, otherwise every hourly run would start another one.

@@ -20,7 +20,18 @@
 }
 .qlp-updated { box-shadow: 0 0 0 3px var(--qlp-ok-bg); }
 
-/* Sezioni: computer oppure smartphone e tablet (controllo a due segmenti sopra le schede). */
+/* Primo livello: cosa si verifica (Funzionalità / Sicurezza), come schede con una linea sotto. */
+.qlp-areas { display: flex; gap: 8px; margin: 0 0 16px; border-bottom: 2px solid #e5e9f0; }
+.qlp-area {
+  flex: 1; border: 0; background: none; cursor: pointer; padding: 10px 8px; margin-bottom: -2px;
+  border-bottom: 3px solid transparent; color: var(--qlp-muted); font-size: 15px; font-weight: 700; line-height: 1.25;
+  min-width: 0;
+}
+.qlp-area[aria-pressed="true"] { color: var(--qlp-accent); border-bottom-color: var(--qlp-accent); }
+.qlp-area:focus-visible { outline: 2px solid var(--qlp-accent); outline-offset: 2px; }
+@media (max-width: 420px) { .qlp-area { font-size: 14px; padding: 8px 4px; } }
+
+/* Secondo livello (solo in Funzionalità): computer oppure smartphone e tablet. */
 .qlp-sections {
   display: flex; gap: 4px; padding: 4px; margin: 0 0 20px;
   background: #f1f4f9; border-radius: 10px;
