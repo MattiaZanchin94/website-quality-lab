@@ -267,3 +267,27 @@
   color: var(--qlp-accent); font-size: 14px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px;
 }
 .qlp-why { flex-basis: 100%; margin: 0; padding: 10px 14px; border-radius: 8px; background: #fff7ed; color: #7c2d12; font-size: 14px; }
+
+/* Il tema (Neve) colora di scuro ogni pulsante al passaggio del mouse (button:hover):
+   qui gli effetti hover sono quelli del Playground, leggeri e coerenti con lo stato del pulsante. */
+.qlp .qlp-area:hover { background: none; color: var(--qlp-accent); border-color: transparent; border-bottom-color: #c7d4f5; }
+.qlp .qlp-area[aria-pressed="true"]:hover { border-bottom-color: var(--qlp-accent); }
+.qlp .qlp-section:hover { background: rgba(255, 255, 255, 0.6); color: var(--qlp-accent); border-color: transparent; }
+.qlp .qlp-section[aria-pressed="true"]:hover { background: #fff; }
+.qlp .qlp-filter-btn:hover { background: #f1f4f9; color: inherit; border-color: var(--qlp-accent); }
+.qlp .qlp-filter-btn[aria-pressed="true"]:hover { background: #e8eefc; color: var(--qlp-accent); }
+.qlp .qlp-how-link:hover, .qlp .qlp-why-link:hover { background: none; color: var(--qlp-accent); text-decoration-thickness: 2px; }
+
+/* Pulsante ⓘ accanto ai controlli con una spiegazione: un cerchio con la "i", che apre la finestra. */
+.qlp .qlp-info {
+  display: inline-flex; align-items: center; justify-content: center; vertical-align: middle;
+  width: 20px; height: 20px; margin-left: 4px; padding: 0; border-radius: 50%;
+  border: 1.5px solid var(--qlp-accent); background: #fff; color: var(--qlp-accent); cursor: pointer;
+  font: italic 700 12px/1 Georgia, "Times New Roman", serif;
+}
+.qlp .qlp-info:hover, .qlp .qlp-info:focus-visible { background: var(--qlp-accent); color: #fff; border-color: var(--qlp-accent); }
+.qlp .qlp-info:focus-visible { outline: 2px solid var(--qlp-accent); outline-offset: 2px; }
+/* Sui telefoni l'area da toccare è più grande, l'icona resta piccola. */
+@media (pointer: coarse) { .qlp .qlp-info { width: 24px; height: 24px; font-size: 13px; } }
+.qlp-modal h4 { margin: 16px 0 4px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--qlp-muted); }
+.qlp-modal h4 + p { margin: 0; line-height: 1.55; }
