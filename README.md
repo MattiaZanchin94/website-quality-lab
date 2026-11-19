@@ -48,7 +48,7 @@ Level 2 needs tests that share no state and don't depend on each other's order. 
 
 ## What is tested
 
-The 14 functional checks run on every browser and device (14 × 9 = 126 runs); the 8 security checks give the same result with any browser and run once, on Chromium (134 runs in total). On phones and tablets the navigation tests open the site's mobile menu first, like a person would, when the site shows it (an iPad in landscape gets the desktop menu).
+The 14 functional checks run on every browser and device (14 × 9 = 126 runs); the 10 security checks give the same result with any browser and run once, on Chromium (136 runs in total). On phones and tablets the navigation tests open the site's mobile menu first, like a person would, when the site shows it (an iPad in landscape gets the desktop menu).
 
 | Type | Area | Check | Priority |
 |---|---|---|---|
@@ -61,14 +61,16 @@ The 14 functional checks run on every browser and device (14 × 9 = 126 runs); t
 | Regression | Playground | Results can be viewed for a single browser | Major |
 | Regression | Playground | Checks can be filtered by priority | Major |
 | Regression | Privacy | The site respects cookie consent (GDPR): no Google Analytics or external services before the choice and after rejecting | Major |
-| Regression | Security | The site always uses a secure connection: http and www lead to https with permanent redirects | Blocker |
-| Regression | Security | The security certificate is valid and doesn't expire in the next 14 days | Blocker |
+| Smoke | Security | The site always uses a secure connection: http and www lead to https with permanent redirects | Blocker |
+| Smoke | Security | The security certificate is valid and doesn't expire in the next 14 days | Blocker |
 | Regression | Security | The list of users is not public (users API, author pages, link previews) | Blocker |
 | Regression | Security | Browsers are required to use HTTPS (HSTS of at least 6 months) | Major |
 | Regression | Security | The site cannot be embedded in other sites (X-Frame-Options, against clickjacking) | Major |
 | Regression | Security | Browsers receive the basic protections (nosniff, Referrer-Policy) | Major |
 | Regression | Security | System files are not accessible (readme, logs, configuration, file listings, XML-RPC) | Major |
 | Regression | Security | Pages don't load unprotected content (no http:// in https pages) | Major |
+| Regression | Security | The site's cookies are protected (Secure and SameSite) | Major |
+| Regression | Security | The Playground API only accepts authorised requests (live progress only with the key, no secrets in responses) | Major |
 
 **Smoke** checks cover the essentials and are the first to flag a problem; **regression** checks go deeper into single features. Both are NUnit categories, so they can be run separately.
 
@@ -144,12 +146,14 @@ dotnet test --filter TestCategory=Security
 - **One source of truth for the menu.** Navigation tests are generated with `[TestCaseSource]` from a single ordered array: updating the menu means editing one line.
 - **Security of the run button.** The GitHub token lives only in `wp-config.php`; the browser talks to WordPress, never to GitHub. A global cooldown and a check for runs already in progress prevent abuse.
 - **Bot protection is not a site failure.** If the hosting provider's anti-bot protection shows a CAPTCHA to the test browser, the check is marked *not verifiable* (`Assert.Ignore`, with the reason) instead of failed. Tests never try to get past a CAPTCHA.
-- **An alert when something is wrong.** If the essential (smoke) checks find a problem on the site, I get a Telegram message; a second message arrives when the problem is fixed.
+- **An alert when something is wrong.** If the essential (smoke) checks (site reachable, menu, HTTPS and certificate) find a problem on the site, I get a Telegram message; a second message arrives when the problem is fixed.
 - **Tests respect the cookie banner.** The site asks for cookie consent: the tests behave like a privacy-conscious visitor and reject the banner when it appears. Data sent to Google Analytics is blocked anyway, so automated runs never show up in the visit statistics.
 - **Privacy is verified, not assumed.** The cookie consent check looks at what really happens in the browser: before the choice and after rejecting, there must be no Google Analytics cookies or external services, and Google must receive only consent-denied signals. Running from servers in the United States, it found that outside Europe statistics started before consent: the site now asks everyone for consent, wherever they are.
 - **Security checked without attacking.** The security checks are passive: they read redirects, headers, the certificate and public files like a browser would, with no aggressive scanning (on shared hosting that would amount to an attack). The first check, which follows every redirect one hop at a time, found that only the home page switched to HTTPS: the other pages also opened unencrypted. The server now enforces HTTPS everywhere.
 - **Two independent courts.** Functionality and Security each have their own queue on GitHub Actions (`concurrency` per court), their own pause between runs and their own progress bar: a security check (about a minute) can run while a browser run is in progress. Publishing the results stays in single file, and `summary.mjs` only updates the checks that ran again: a game on one court or one device doesn't wipe the other results.
-- **Statistics without personal data.** The Playground sends two events to Google Analytics, `playground_tab` (which tab is opened) and `playground_run` (which check is started). They go through the site's own Google Analytics, so they respect the choice made in the cookie banner.
+- **Every security check explains itself.** Next to its name there's an ⓘ icon that opens a window with *what it checks* and *why it matters*, in plain language. The texts live in the C# tests (Allure `explain_*` labels), so explanation and check always stay in sync.
+- **My own code gets checked like the rest.** The Playground plugin's API has its own "negative" tests: without the secret key, or with a wrong one, nobody can write the live progress, and public responses contain no tokens. The test never starts a real run.
+- **Statistics without personal data.** The Playground sends three events to Google Analytics: `playground_tab` (which tab is opened), `playground_run` (which check is started) and `playground_explain` (which explanation is read). They go through the site's own Google Analytics, so they respect the choice made in the cookie banner.
 - **Fix first, then publish.** The weaknesses found (a username derivable from the API, missing headers, pages over http) were fixed before showing the checks on the Playground: a public page must not become a map of the site's weak spots.
 - **A network hiccup is not a site outage.** If the connection drops while a page is opening, the test retries up to twice; a site that is really unreachable still fails the check.
 - **The checks never trigger themselves.** The Playground test verifies that the run button exists but never clicks it, otherwise every hourly run would start another one.

@@ -25,6 +25,13 @@ public abstract class QualityLabTest : PageTest
     protected const string NameEn = "name_en";
     protected const string FeatureEn = "feature_en";
 
+    // Spiegazione per i visitatori del Playground (finestra ⓘ accanto al controllo), in parole semplici:
+    // cosa fa il controllo e perché conta. Facoltativa: senza, il Playground non mostra l'icona.
+    protected const string ExplainWhat = "explain_what";
+    protected const string ExplainWhy = "explain_why";
+    protected const string ExplainWhatEn = "explain_what_en";
+    protected const string ExplainWhyEn = "explain_why_en";
+
     // Priorità dei controlli. Allure non ha un livello "major": usiamo il suo "normal"
     // e la pagina Playground lo mostra come Major.
     protected const SeverityLevel Blocker = SeverityLevel.blocker; // se fallisce, il sito ha un problema serio

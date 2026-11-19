@@ -69,6 +69,10 @@
       // Primo livello: cosa si verifica. Secondo livello (solo Funzionalità): dove.
       areas: { functional: "🧭 Funzionalità", security: "🔒 Sicurezza" },
       areasLabel: "Scegli cosa verificare",
+      // Finestra ⓘ accanto ai controlli che hanno una spiegazione.
+      explainButton: (name) => `Cosa significa il controllo «${name}»?`,
+      explainWhat: "Cosa verifica",
+      explainWhy: "Perché è importante",
       sections: { desktop: "💻 Computer", mobile: "📱 Smartphone e tablet" },
       securityNote:
         "Controlli passivi: leggono le risposte del sito come farebbe un browser, senza attacchi. " +
@@ -208,6 +212,9 @@
       ],
       areas: { functional: "🧭 Functionality", security: "🔒 Security" },
       areasLabel: "Choose what to check",
+      explainButton: (name) => `What does the check “${name}” mean?`,
+      explainWhat: "What it checks",
+      explainWhy: "Why it matters",
       sections: { desktop: "💻 Desktop", mobile: "📱 Phones and tablets" },
       securityNote:
         "Passive checks: they read the site's responses like a browser would, with no attacks. " +
@@ -357,6 +364,7 @@
   // Testo nella lingua della pagina, con l'italiano come riserva se manca la traduzione.
   const titleOf = (t) => (LANG === "en" && t.en && t.en.title) || t.title;
   const featureOf = (t) => (LANG === "en" && t.en && t.en.feature) || t.feature || T.other;
+  const explainOf = (t) => (t.explain && t.explain[LANG] && t.explain[LANG].what ? t.explain[LANG] : null);
 
   /* ---------- Formattazione ---------- */
 
@@ -645,6 +653,30 @@
       <ul>${lines.map((line) => `<li>${esc(line)}</li>`).join("")}</ul>
       <form method="dialog"><button type="submit" class="qlp-run">${esc(T.close)}</button></form>`;
     return dialog;
+  }
+
+  // Finestra ⓘ: spiegazione di un controllo in parole semplici (cosa verifica e perché conta).
+  // Come "Come funziona?", è creata una volta sola e aggiunta a <body>.
+  let explainBox = null;
+  function explainDialog(t) {
+    if (!explainBox) {
+      explainBox = document.createElement("dialog");
+      explainBox.className = "qlp qlp-modal";
+      explainBox.setAttribute("aria-labelledby", "qlp-explain-title");
+      explainBox.setAttribute("data-no-translation", "");
+      explainBox.addEventListener("click", (e) => {
+        if (e.target === explainBox) explainBox.close();
+      });
+      document.body.appendChild(explainBox);
+    }
+    const e = explainOf(t);
+    explainBox.innerHTML = `
+      <h3 id="qlp-explain-title">${esc(titleOf(t))}</h3>
+      <h4>${esc(T.explainWhat)}</h4>
+      <p>${esc(e.what)}</p>
+      ${e.why ? `<h4>${esc(T.explainWhy)}</h4><p>${esc(e.why)}</p>` : ""}
+      <form method="dialog"><button type="submit" class="qlp-run">${esc(T.close)}</button></form>`;
+    return explainBox;
   }
 
   /* ---------- Avanzamento in diretta ---------- */
@@ -988,10 +1020,13 @@
         ${renderPriorityFilter(d.tests)}
         <div class="qlp-tests">
           ${Object.entries(byFeature)
-            .map(
-              ([feature, tests]) => `
+            .map(([feature, tests]) => {
+              // Se il gruppo ha controlli di un solo tipo, il tipo sta nell'intestazione;
+              // altrimenti (es. Sicurezza: HTTPS e certificato sono smoke, il resto regression) su ogni riga.
+              const mixed = new Set(tests.map((t) => t.type)).size > 1;
+              return `
             <div class="qlp-group">
-              <h4>${esc(feature)}${renderType(tests[0].type)}</h4>
+              <h4>${esc(feature)}${mixed ? "" : renderType(tests[0].type)}</h4>
               <ul>
                 ${tests
                   .map((t) => {
@@ -1010,15 +1045,19 @@
                     const icon = liveRow === "running" ? '<span class="qlp-spin" aria-hidden="true"></span>' : liveRow === "pending" ? "○" : STATUS_ICON[st] || "?";
                     return `<li class="${rowClass}">
                       <span class="qlp-icon" aria-label="${esc(liveRow || st)}">${icon}</span>
-                      <span class="qlp-name">${esc(titleOf(t))}${t.priority ? ` ${renderPriority(priorityOf(t))}` : ""}</span>
+                      <span class="qlp-name">${esc(titleOf(t))}${mixed ? renderType(t.type) : ""}${t.priority ? ` ${renderPriority(priorityOf(t))}` : ""}${
+                        explainOf(t)
+                          ? ` <button type="button" class="qlp-info" data-key="${esc(t.key)}" aria-haspopup="dialog" aria-label="${esc(T.explainButton(titleOf(t)))}" title="${esc(T.explainButton(titleOf(t)))}">i</button>`
+                          : ""
+                      }</span>
                       ${state.view === "all" && !isSecuritySection() ? renderBrowsers(t, info) : ""}
                       <span class="qlp-dur">${liveRow ? "—" : seconds(ms)}</span>
                     </li>`;
                   })
                   .join("")}
               </ul>
-            </div>`,
-            )
+            </div>`;
+            })
             .join("")}
         </div>`
       : `<p class="qlp-empty">${esc(T.noResults)}</p>`;
@@ -1053,6 +1092,14 @@
         C().showWhy = !C().showWhy;
         render();
       });
+    root.querySelectorAll(".qlp-info").forEach((b) =>
+      b.addEventListener("click", () => {
+        const t = state.summary.tests.find((x) => x.key === b.dataset.key);
+        if (!t) return;
+        track("playground_explain", { area: t.area || "functional", check: t.method || t.key });
+        explainDialog(t).showModal();
+      }),
+    );
     const how = root.querySelector(".qlp-how-link");
     if (how) how.addEventListener("click", () => howDialog().showModal());
     root.querySelectorAll(".qlp-filter-btn").forEach((b) =>

@@ -48,7 +48,7 @@ Il livello 2 richiede test che non condividano stato e non dipendano dall'ordine
 
 ## Cosa viene verificato
 
-I 14 controlli funzionali girano su ogni browser e dispositivo (14 × 9 = 126 esecuzioni); gli 8 controlli di sicurezza danno lo stesso risultato con qualsiasi browser e girano una volta sola, su Chromium (134 esecuzioni in tutto). Su smartphone e tablet i test di navigazione aprono prima il menu mobile del sito, come farebbe una persona, quando il sito lo mostra (un iPad in orizzontale riceve il menu desktop).
+I 14 controlli funzionali girano su ogni browser e dispositivo (14 × 9 = 126 esecuzioni); i 10 controlli di sicurezza danno lo stesso risultato con qualsiasi browser e girano una volta sola, su Chromium (136 esecuzioni in tutto). Su smartphone e tablet i test di navigazione aprono prima il menu mobile del sito, come farebbe una persona, quando il sito lo mostra (un iPad in orizzontale riceve il menu desktop).
 
 | Tipo | Area | Controllo | Priorità |
 |---|---|---|---|
@@ -61,14 +61,16 @@ I 14 controlli funzionali girano su ogni browser e dispositivo (14 × 9 = 126 es
 | Regression | Playground | Si possono vedere i risultati di un singolo browser | Major |
 | Regression | Playground | Si possono filtrare i controlli per priorità | Major |
 | Regression | Privacy | Il sito rispetta il consenso ai cookie (GDPR): niente Google Analytics né servizi esterni prima della scelta e dopo il rifiuto | Major |
-| Regression | Sicurezza | Il sito usa sempre una connessione sicura: http e www portano a https con redirect permanenti | Blocker |
-| Regression | Sicurezza | Il certificato di sicurezza è valido e non scade nei prossimi 14 giorni | Blocker |
+| Smoke | Sicurezza | Il sito usa sempre una connessione sicura: http e www portano a https con redirect permanenti | Blocker |
+| Smoke | Sicurezza | Il certificato di sicurezza è valido e non scade nei prossimi 14 giorni | Blocker |
 | Regression | Sicurezza | L'elenco degli utenti non è pubblico (API utenti, pagine autore, anteprima dei link) | Blocker |
 | Regression | Sicurezza | Il browser è obbligato a usare HTTPS (HSTS di almeno 6 mesi) | Major |
 | Regression | Sicurezza | Il sito non può essere inserito in altri siti (X-Frame-Options, contro il clickjacking) | Major |
 | Regression | Sicurezza | Il browser riceve le protezioni di base (nosniff, Referrer-Policy) | Major |
 | Regression | Sicurezza | I file di sistema non sono accessibili (readme, log, configurazione, elenco dei file, XML-RPC) | Major |
 | Regression | Sicurezza | Le pagine non caricano contenuti non protetti (niente http:// in pagine https) | Major |
+| Regression | Sicurezza | I cookie del sito sono protetti (Secure e SameSite) | Major |
+| Regression | Sicurezza | L'API del Playground accetta solo richieste autorizzate (avanzamento solo con la chiave, nessun segreto nelle risposte) | Major |
 
 I controlli **smoke** coprono l'essenziale e sono i primi a segnalare un problema; quelli **regression** approfondiscono le singole funzionalità. Sono categorie NUnit, quindi si possono eseguire separatamente.
 
@@ -144,12 +146,14 @@ dotnet test --filter TestCategory=Security
 - **Il menu è definito una volta sola.** I test di navigazione sono generati con `[TestCaseSource]` da un unico array ordinato: per aggiornare il menu basta modificare una riga.
 - **Sicurezza del pulsante.** Il token GitHub sta solo in `wp-config.php`; il browser parla con WordPress, mai con GitHub. Un cooldown globale e il controllo delle esecuzioni già in corso evitano abusi.
 - **La protezione anti-bot non è un errore del sito.** Se la protezione anti-bot dell'hosting mostra un CAPTCHA al browser di test, il controllo viene segnato come *non verificabile* (`Assert.Ignore`, con il motivo) invece che fallito. I test non provano mai a superare un CAPTCHA.
-- **Un avviso quando qualcosa non va.** Se i controlli essenziali (smoke) segnalano un problema sul sito, ricevo un messaggio su Telegram; un secondo messaggio arriva quando il problema è risolto.
+- **Un avviso quando qualcosa non va.** Se i controlli essenziali (smoke: sito raggiungibile, menu, HTTPS e certificato) segnalano un problema sul sito, ricevo un messaggio su Telegram; un secondo messaggio arriva quando il problema è risolto.
 - **I test rispettano il banner dei cookie.** Il sito chiede il consenso ai cookie: i test si comportano come un visitatore attento alla privacy e, quando il banner compare, lo rifiutano. Gli invii di dati a Google Analytics vengono comunque bloccati, così le esecuzioni automatiche non finiscono nelle statistiche delle visite.
 - **La privacy si verifica, non si dà per scontata.** Il controllo sul consenso ai cookie osserva cosa succede davvero nel browser: prima della scelta e dopo il rifiuto non devono esserci cookie di Google Analytics né servizi esterni, e Google deve ricevere solo segnali con consenso negato. Girando da server negli Stati Uniti, ha scoperto che fuori dall'Europa le statistiche partivano prima del consenso: ora il sito chiede il consenso a tutti, ovunque si trovino.
 - **Sicurezza verificata senza attaccare.** I controlli di sicurezza sono passivi: leggono redirect, header, certificato e file pubblici come farebbe un browser, senza scansioni aggressive (su un hosting condiviso equivarrebbero a un attacco). Il primo controllo, che segue ogni redirect un passaggio alla volta, ha scoperto che solo la home passava a HTTPS: le altre pagine si aprivano anche in chiaro. Ora il server forza HTTPS ovunque.
 - **Due campetti indipendenti.** Funzionalità e Sicurezza hanno ciascuna la sua coda su GitHub Actions (`concurrency` per campetto), la sua pausa tra un avvio e l'altro e la sua barra di avanzamento: una verifica di sicurezza (circa un minuto) può girare mentre ne è in corso una sui browser. Le pubblicazioni dei risultati invece restano in fila, e `summary.mjs` aggiorna solo i controlli rieseguiti: una partita su un solo campetto o un solo dispositivo non cancella gli altri risultati.
-- **Statistiche senza dati personali.** La Playground invia a Google Analytics due eventi, `playground_tab` (quale scheda viene aperta) e `playground_run` (quale verifica viene avviata). Passano dallo stesso Google Analytics del sito, quindi rispettano la scelta fatta nel banner dei cookie.
+- **Ogni controllo di sicurezza si spiega da solo.** Accanto al nome c'è un'icona ⓘ che apre una finestra con *cosa verifica* e *perché è importante*, in parole semplici. I testi stanno nei test C# (label Allure `explain_*`), quindi spiegazione e controllo restano sempre allineati.
+- **Il codice mio si verifica come il resto.** L'API del plugin Playground ha i suoi test "negativi": senza la chiave segreta, o con una chiave sbagliata, non si può scrivere l'avanzamento in diretta, e le risposte pubbliche non contengono token. Il test non avvia mai una verifica vera.
+- **Statistiche senza dati personali.** La Playground invia a Google Analytics tre eventi: `playground_tab` (quale scheda viene aperta), `playground_run` (quale verifica viene avviata) e `playground_explain` (quale spiegazione viene letta). Passano dallo stesso Google Analytics del sito, quindi rispettano la scelta fatta nel banner dei cookie.
 - **Prima si corregge, poi si pubblica.** I punti deboli trovati (nome utente ricavabile dall'API, header mancanti, pagine in http) sono stati corretti prima di mostrare i controlli nella Playground: una pagina pubblica non deve diventare la mappa delle debolezze del sito.
 - **Un intoppo di rete non è un sito giù.** Se la connessione cade mentre una pagina si apre, il test riprova fino a due volte; un sito davvero irraggiungibile fa comunque fallire il controllo.
 - **I test non si avviano da soli.** Il test della Playground verifica che il pulsante esista ma non lo clicca, altrimenti ogni esecuzione oraria ne avvierebbe un'altra.

@@ -20,7 +20,13 @@ const results = await Promise.all(
 const label = (r, name) => r.labels?.find((l) => l.name === name)?.value ?? null;
 const browserOf = (r) => label(r, "browser") ?? "chromium";
 // [Category("Security")] in C#: i controlli di sicurezza hanno il loro "campetto" nella pagina Playground.
-const areaOf = (r) => ((r.labels ?? []).some((l) => l.name === "tag" && /^security$/i.test(l.value)) ? "security" : "functional");
+// Label explain_* impostate nei test C# (vedi QualityLabTest): null se il controllo non ne ha.
+const explainOf = (r) => {
+  const it = { what: label(r, "explain_what"), why: label(r, "explain_why") };
+  const en = { what: label(r, "explain_what_en"), why: label(r, "explain_why_en") };
+  return it.what || en.what ? { it, en } : null;
+};
+const areaOf = (r) =>((r.labels ?? []).some((l) => l.name === "tag" && /^security$/i.test(l.value)) ? "security" : "functional");
 
 // Ogni controllo gira su più browser: raggruppiamo le esecuzioni per nome del controllo.
 // Tutte le configurazioni: 4 browser per computer e 5 dispositivi emulati.
@@ -41,7 +47,7 @@ for (const r of results) {
   const existing = byKey.get(id);
   if (existing && hasFinalName(r) && !existing.en.title) {
     // Il primo risultato visto era senza nome definitivo: prendiamo titolo e metadati da questo.
-    Object.assign(existing, { title, en: { title: label(r, "name_en"), feature: label(r, "feature_en") }, order: Number(label(r, "order")) || null });
+    Object.assign(existing, { title, en: { title: label(r, "name_en"), feature: label(r, "feature_en") }, order: Number(label(r, "order")) || null, explain: explainOf(r) });
   }
   const t = existing ?? {
     title,
@@ -60,6 +66,8 @@ for (const r of results) {
     // [Category("Smoke")] / [Category("Regression")] in C# diventano tag Allure.
     type: (r.labels ?? []).find((l) => l.name === "tag" && /^(smoke|regression)$/i.test(l.value))?.value.toLowerCase() ?? null,
     area: areaOf(r),
+    // Spiegazione per i visitatori (finestra ⓘ nel Playground): cosa fa il controllo e perché conta.
+    explain: explainOf(r),
     browsers: {}, // stato per browser, es. { chromium: "passed", firefox: "failed" }
     durations: {}, // durata in ms per browser
   };
