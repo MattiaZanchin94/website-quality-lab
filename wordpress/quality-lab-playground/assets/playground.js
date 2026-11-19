@@ -150,7 +150,7 @@
         made: (title, where) => `🏀 Canestro! «${title}» su ${where}`,
         missed: (title, where) => `🔔 Ferro! «${title}» su ${where} non è passato`,
         score: (made, missed) => `Canestri ${made} · Ferri ${missed}`,
-        waiting: "Il primo tiro arriva appena finisce un controllo",
+        waiting: "Riscaldamento: il primo tiro arriva appena finisce un controllo",
       },
       steps: {
         starting: "Richiesta inviata",
@@ -295,7 +295,7 @@
         made: (title, where) => `🏀 Swish! “${title}” on ${where}`,
         missed: (title, where) => `🔔 Off the rim! “${title}” on ${where} didn't pass`,
         score: (made, missed) => `Baskets ${made} · Rims ${missed}`,
-        waiting: "The first shot comes as soon as a check finishes",
+        waiting: "Warming up: the first shot comes as soon as a check finishes",
       },
       steps: {
         starting: "Request sent",
@@ -339,7 +339,7 @@
   });
   // Tiri a canestro della partita seguita: già visti, in coda, punteggio.
   function newShots() {
-    return { seen: {}, primed: false, queue: [], playing: false, made: 0, missed: 0, last: null, node: null };
+    return { seen: {}, results: {}, primed: false, queue: [], playing: false, last: null, node: null, dribble: null };
   }
   const courts = { functional: newCourt(), security: newCourt() };
   const AREAS = Object.keys(courts);
@@ -715,6 +715,7 @@
     live.target = 0;
     live.startedAt = Date.now();
     live.since = since || 0;
+    if (c.shots) stopDribble(c.shots);
     c.shots = newShots(); // nuova partita: punteggio da zero
   }
 
@@ -821,7 +822,7 @@
         <span class="qlp-live-fill" style="width:${live.shown.toFixed(2)}%"></span>
       </div>
       ${now}
-      ${c.phase === "in_progress" || c.shots.made + c.shots.missed > 0 ? '<div class="qlp-shot-slot"></div>' : ""}
+      ${["starting", "queued", "in_progress"].includes(c.phase) || Object.keys(c.shots.results).length ? '<div class="qlp-shot-slot"></div>' : ""}
     </div>`;
   }
 
@@ -841,15 +842,36 @@
     if (!sh.node) {
       sh.node = document.createElement("div");
       sh.node.className = "qlp-shot";
+      sh.node.dataset.pose = "dribble";
       sh.node.innerHTML = `
         <svg viewBox="0 0 240 130" aria-hidden="true" focusable="false">
           <line x1="0" y1="124" x2="240" y2="124" stroke="#ffffff" stroke-opacity="0.25" stroke-width="2"/>
           <line x1="210" y1="14" x2="210" y2="76" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>
-          <path class="qlp-shot-net" d="M170 54 L176 80 L194 80 L200 54" fill="none" stroke="#ffffff" stroke-opacity="0.8" stroke-width="2"/>
+          <g class="qlp-shot-net" fill="none" stroke="#ffffff" stroke-opacity="0.85" stroke-width="1.4" stroke-linecap="round">
+            <path d="M170 54 L177 82 M178 54 L181.5 82 M186 54 L186 82 M194 54 L190.5 82 M202 54 L195 82"/>
+            <path d="M170 54 L179.8 68 L177 82 M178 54 L173.5 68 L181.5 82 M178 54 L186.0 68 L181.5 82 M186 54 L179.8 68 L186 82 M186 54 L192.2 68 L186 82 M194 54 L186.0 68 L190.5 82 M194 54 L198.5 68 L190.5 82 M202 54 L192.2 68 L195 82" stroke-opacity="0.6"/>
+            <path d="M172.3 63.2 H199.7 M174.6 72.5 H197.4 M177.0 82.0 H195.0" stroke-opacity="0.5"/>
+          </g>
           <line class="qlp-shot-rim" x1="168" y1="52" x2="204" y2="52" stroke="#f97316" stroke-width="5" stroke-linecap="round"/>
-          <g class="qlp-shot-ball" style="transform: translate(24px, 112px)">
-            <circle r="9" fill="#f97316" stroke="#7c2d12" stroke-width="1.5"/>
-            <path d="M-9 0 H9 M0 -9 V9" stroke="#7c2d12" stroke-width="1.2" fill="none"/>
+
+          <!-- Il giocatore: palleggia in attesa, tira a ogni controllo, poi esulta o si dispera.
+               Le braccia cambiano con la "posa" (attributo data-pose sul riquadro). -->
+          <g class="qlp-player" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+            <g class="qlp-head"><circle cx="104" cy="76" r="6" fill="#ffffff" stroke="none"/></g>
+            <path d="M104 84 V104 M104 104 L99 123 M104 104 L110 123"/>
+            <path class="qlp-arms qlp-arms-dribble" d="M101 88 L92 99 M107 88 L113 97"/>
+            <path class="qlp-arms qlp-arms-shoot" d="M101 88 L97 66 M107 88 L112 66"/>
+            <path class="qlp-arms qlp-arms-cheer" d="M101 88 L89 65 M107 88 L120 65"/>
+            <path class="qlp-arms qlp-arms-sad" d="M101 88 L91 81 L98 75 M107 88 L117 81 L110 75"/>
+          </g>
+          <!-- Palla del palleggio (accanto al giocatore) e palla del tiro (in volo) -->
+          <g class="qlp-dribble-ball" style="transform: translate(89px, 106px)">
+            <circle r="7.5" fill="#f97316" stroke="#7c2d12" stroke-width="1.2"/>
+            <path d="M-7.5 0 H7.5 M0 -7.5 V7.5" stroke="#7c2d12" stroke-width="1" fill="none"/>
+          </g>
+          <g class="qlp-shot-ball" style="transform: translate(105px, 57px); opacity: 0">
+            <circle r="7.5" fill="#f97316" stroke="#7c2d12" stroke-width="1.2"/>
+            <path d="M-7.5 0 H7.5 M0 -7.5 V7.5" stroke="#7c2d12" stroke-width="1" fill="none"/>
           </g>
         </svg>
         <div class="qlp-shot-text">
@@ -861,14 +883,30 @@
     return sh.node;
   }
 
+  // Il riquadro racconta solo la parte di partita che si sta guardando: la sezione aperta
+  // (es. Computer: Chrome, Edge, Firefox, Safari) e, se scelta, la scheda di un solo browser.
+  function shotInView(b) {
+    const f = FAMILY_OF[b];
+    return Boolean(f) && (state.view === "all" || state.view === f);
+  }
+
   function updateShotText(c) {
     const sh = c.shots;
     if (!sh.node) return;
-    const shot = sh.last;
+    let made = 0;
+    let missed = 0;
+    for (const r of Object.values(sh.results)) {
+      if (!shotInView(r.b)) continue;
+      if (r.result === "passed") made++;
+      else missed++;
+    }
+    sh.made = made;
+    sh.missed = missed;
+    const shot = sh.last && shotInView(sh.last.b) ? sh.last : null;
     sh.node.querySelector(".qlp-shot-caption").textContent = shot
       ? (shot.result === "passed" ? T.shot.made : T.shot.missed)(shot.title, shot.where)
       : T.shot.waiting;
-    sh.node.querySelector(".qlp-shot-score").textContent = T.shot.score(sh.made, sh.missed);
+    sh.node.querySelector(".qlp-shot-score").textContent = T.shot.score(made, missed);
   }
 
   // Controlli finiti dall'ultimo aggiornamento: diventano tiri in coda.
@@ -878,33 +916,52 @@
     if (!st || !st.run || !isFollowedRun(c, st.run)) return;
     const known = new Map(((state.summary && state.summary.tests) || []).map((t) => [t.key, t]));
     const fresh = [];
-    let made = 0;
-    let missed = 0;
     for (const [b, p] of Object.entries(st.progress || {})) {
       for (const [key, result] of Object.entries((p && p.tests) || {})) {
         if (result !== "passed" && result !== "failed") continue; // i "non verificabili" non sono tiri
         const t = known.get(key);
         if (t && (t.area === "security") !== (area === "security")) continue; // controlli dell'altro campetto
-        if (result === "passed") made++;
-        else missed++;
         const id = b + "|" + key;
+        sh.results[id] = { b, result }; // per il punteggio, filtrato poi sulla vista aperta
         if (sh.seen[id]) continue;
         sh.seen[id] = true;
         // Pagina aperta a partita iniziata: i tiri già fatti contano nel punteggio, ma non si rigiocano.
-        if (sh.primed) fresh.push({ result, title: t ? titleOf(t) : key, where: SHOT_NAMES[b] || b });
+        if (sh.primed) fresh.push({ b, result, title: t ? titleOf(t) : key, where: SHOT_NAMES[b] || b });
       }
     }
     sh.primed = true;
-    sh.made = made;
-    sh.missed = missed;
+    updateShotText(c);
     // Gli aggiornamenti arrivano ogni 5 secondi, anche con più tiri insieme: ne teniamo in coda
     // al massimo 3, così l'animazione resta al passo con la partita.
     sh.queue = sh.queue.concat(fresh).slice(-3);
     playNextShot(c);
   }
 
+  // In attesa dei risultati il giocatore palleggia: si vede subito che la partita è iniziata,
+  // anche nel minuto in cui GitHub prepara le macchine e non ci sono ancora tiri.
+  function startDribble(c) {
+    const sh = c.shots;
+    if (sh.dribble || sh.playing || !sh.node || !sh.node.isConnected || reducedMotion() || !sh.node.animate) return;
+    sh.node.dataset.pose = "dribble";
+    const at = (y, easing) => ({ transform: `translate(89px, ${y}px)`, easing });
+    const arm = (y, easing) => ({ d: `path("M101 88 L92 ${y} M107 88 L113 97")`, easing });
+    const timing = { duration: 620, iterations: Infinity };
+    sh.dribble = [
+      // la palla scende fino a terra (pavimento meno il raggio) e torna alla mano
+      sh.node.querySelector(".qlp-dribble-ball").animate([at(106, "ease-in"), at(116.5, "ease-out"), at(106, "linear")], timing),
+      // la mano accompagna la palla (dove il browser lo permette: Safari la lascia ferma)
+      sh.node.querySelector(".qlp-arms-dribble").animate([arm(99, "ease-in"), arm(104, "ease-out"), arm(99, "linear")], timing),
+    ];
+  }
+  function stopDribble(sh) {
+    if (sh.dribble) sh.dribble.forEach((a) => a.cancel());
+    sh.dribble = null;
+  }
+
   function playNextShot(c) {
     const sh = c.shots;
+    // I tiri degli altri browser o dispositivi (es. gli smartphone mentre si guarda Computer) non si giocano.
+    while (sh.queue.length && !shotInView(sh.queue[0].b)) sh.queue.shift();
     if (sh.playing || !sh.queue.length) return;
     const shot = sh.queue.shift();
     sh.playing = true;
@@ -912,40 +969,78 @@
     updateShotText(c);
     const done = () => {
       sh.playing = false;
-      setTimeout(() => playNextShot(c), 250);
+      setTimeout(() => {
+        playNextShot(c);
+        startDribble(c); // nessun altro tiro in coda: si torna a palleggiare
+      }, 300);
     };
     // Campetto non visibile o animazioni ridotte nelle preferenze del sistema: solo il testo.
     if (!sh.node || !sh.node.isConnected || reducedMotion() || !sh.node.animate) {
       setTimeout(done, 400);
       return;
     }
-    const ball = sh.node.querySelector(".qlp-shot-ball");
+    const node = sh.node;
+    const player = node.querySelector(".qlp-player");
+    const made = shot.result === "passed";
+
+    // 1. Si ferma, porta la palla sopra la testa, salta e tira.
+    stopDribble(sh);
+    node.dataset.pose = "shoot";
+    player.animate([{ transform: "translateY(0)" }, { transform: "translateY(-8px)" }, { transform: "translateY(0)" }], {
+      duration: 520, delay: 120, easing: "ease-out",
+    });
+
+    // 2. La palla: dal palleggio a sopra la testa, poi la parabola verso il ferro.
     const at = (x, y, offset, opacity = 1) => ({ transform: `translate(${x}px, ${y}px)`, offset, opacity });
-    // Parabola del tiro, dal tiratore (24, 112) verso il ferro.
     const arc = (x1, y1, upto) =>
       Array.from({ length: 10 }, (_, i) => {
         const k = (i + 1) / 10;
-        return at(24 + (x1 - 24) * k, 112 + (y1 - 112) * k - 150 * k * (1 - k), upto * k);
+        return at(105 + (x1 - 105) * k, 57 + (y1 - 57) * k - 120 * k * (1 - k), 0.14 + (upto - 0.14) * k);
       });
-    let frames;
-    if (shot.result === "passed") {
-      frames = [at(24, 112, 0), ...arc(186, 42, 0.62), at(186, 66, 0.76), at(186, 100, 0.9), at(186, 116, 1, 0)];
-      sh.node
-        .querySelector(".qlp-shot-net")
-        .animate([{ transform: "scaleY(1)" }, { transform: "scaleY(1.3)" }, { transform: "scaleY(1)" }], {
-          duration: 380, delay: 760, easing: "ease-out",
-        });
+    const start = [at(89, 104, 0), at(105, 57, 0.14)];
+    const frames = made
+      ? [...start, ...arc(186, 42, 0.62), at(186, 66, 0.76), at(186, 100, 0.9), at(186, 116, 1, 0)]
+      : [...start, ...arc(166, 40, 0.58), at(150, 18, 0.72), at(142, 112, 0.88), at(134, 100, 0.94), at(126, 114, 1, 0)];
+    const ball = node.querySelector(".qlp-shot-ball").animate(frames, { duration: 1500, easing: "linear" });
+    if (made) {
+      node.querySelector(".qlp-shot-net").animate([{ transform: "scaleY(1)" }, { transform: "scaleY(1.3)" }, { transform: "scaleY(1)" }], {
+        duration: 380, delay: 840, easing: "ease-out",
+      });
     } else {
-      frames = [at(24, 112, 0), ...arc(166, 40, 0.58), at(146, 16, 0.72), at(124, 112, 0.88), at(106, 98, 0.94), at(92, 114, 1, 0)];
-      sh.node
-        .querySelector(".qlp-shot-rim")
-        .animate(
-          [{ transform: "rotate(0deg)" }, { transform: "rotate(-7deg)" }, { transform: "rotate(5deg)" }, { transform: "rotate(0deg)" }],
-          { duration: 360, delay: 640, easing: "ease-out" },
-        );
+      node.querySelector(".qlp-shot-rim").animate(
+        [{ transform: "rotate(0deg)" }, { transform: "rotate(-7deg)" }, { transform: "rotate(5deg)" }, { transform: "rotate(0deg)" }],
+        { duration: 360, delay: 780, easing: "ease-out" },
+      );
     }
-    const anim = ball.animate(frames, { duration: 1300, easing: "linear" });
-    anim.finished.then(done, done);
+
+    // 3. Appena si vede com'è andata: esulta (braccia a V e due saltelli)
+    //    oppure si dispera (mani sulla testa, si abbassa e scuote la testa).
+    let reaction = null;
+    setTimeout(() => {
+      if (!node.isConnected) return;
+      node.dataset.pose = made ? "cheer" : "sad";
+      reaction = made
+        ? player.animate(
+            [0, -7, 0, -7, 0].map((y) => ({ transform: `translateY(${y}px)` })),
+            { duration: 900, easing: "ease-in-out" },
+          )
+        : Promise.all([
+            player.animate([{ transform: "translateY(0)" }, { transform: "translateY(4px)" }, { transform: "translateY(4px)" }], {
+              duration: 1000, easing: "ease-out",
+            }).finished,
+            node.querySelector(".qlp-head").animate(
+              [0, -14, 12, -10, 6, 0].map((deg) => ({ transform: `translateY(3px) rotate(${deg}deg)` })),
+              { duration: 1000, easing: "ease-in-out" },
+            ).finished,
+          ]);
+    }, 950);
+
+    // 4. Finita la reazione si riprende a palleggiare (o si tira di nuovo, se ci sono altri risultati).
+    ball.finished
+      .then(() => new Promise((r) => setTimeout(r, 450)))
+      .then(() => (reaction && reaction.finished ? reaction.finished : reaction))
+      .catch(() => {})
+      .then(done);
   }
 
   // Animazione continua: a ogni passo la barra si avvicina al valore vero, senza mai tornare indietro.
@@ -1228,7 +1323,10 @@
       </div>`;
 
     const shotSlot = root.querySelector(".qlp-shot-slot");
-    if (shotSlot) shotSlot.replaceWith(shotWidget(C()));
+    if (shotSlot) {
+      shotSlot.replaceWith(shotWidget(C()));
+      startDribble(C());
+    }
     const btn = root.querySelector(".qlp-run");
     if (btn) btn.addEventListener("click", startRun);
     const whyLink = root.querySelector(".qlp-why-link");
