@@ -42,9 +42,9 @@ public class SecurityTests : QualityLabTest
     [AllureDescription("Ogni indirizzo senza HTTPS o con www porta, con un redirect permanente, " +
                        "alla stessa pagina su https://mattiazanchin.com.")]
     [AllureLabel(ExplainWhat, "Apre il sito con indirizzi vecchi o scritti in modo diverso (http://, www.) su più pagine e segue ogni passaggio: tutti devono arrivare alla versione cifrata, https://mattiazanchin.com.")]
-    [AllureLabel(ExplainWhy, "Senza HTTPS quello che il visitatore vede e invia viaggia in chiaro: chi è sulla stessa rete, per esempio un Wi-Fi pubblico, potrebbe leggerlo o modificarlo. Questo controllo ha trovato una falla vera: solo la home passava a HTTPS, le altre pagine si aprivano anche senza cifratura.")]
+    [AllureLabel(ExplainWhy, "Senza HTTPS quello che il visitatore vede e invia viaggia in chiaro: chi è sulla stessa rete, per esempio un Wi-Fi pubblico, potrebbe leggerlo o modificarlo.")]
     [AllureLabel(ExplainWhatEn, "Opens the site with old or differently written addresses (http://, www.) on several pages and follows every hop: they must all end up on the encrypted version, https://mattiazanchin.com.")]
-    [AllureLabel(ExplainWhyEn, "Without HTTPS, what visitors see and send travels in plain text: anyone on the same network, such as public Wi-Fi, could read or change it. This check found a real flaw: only the home page switched to HTTPS, the other pages also opened unencrypted.")]
+    [AllureLabel(ExplainWhyEn, "Without HTTPS, what visitors see and send travels in plain text: anyone on the same network, such as public Wi-Fi, could read or change it.")]
     [AllureSeverity(Blocker)]
     public async Task SiteAlwaysUsesSecureConnection()
     {
@@ -268,9 +268,9 @@ public class SecurityTests : QualityLabTest
                        "non risponde, le pagine autore non rivelano il nome e l'anteprima dei link non contiene indirizzi email. " +
                        "Un nome utente noto è metà delle credenziali di accesso.")]
     [AllureLabel(ExplainWhat, "Prova i tre modi in cui WordPress, di base, rivela i nomi utente: l'elenco degli utenti nell'API, le pagine autore e l'anteprima che compare quando si condivide un link. Nessuno deve mostrarli.")]
-    [AllureLabel(ExplainWhy, "Il nome utente è metà delle credenziali di accesso: chi lo conosce deve indovinare solo la password. Anche questo controllo nasce da un problema vero: il nome pubblico dell'amministratore era il suo indirizzo email.")]
+    [AllureLabel(ExplainWhy, "Il nome utente è metà delle credenziali di accesso: chi lo conosce deve indovinare solo la password.")]
     [AllureLabel(ExplainWhatEn, "Tries the three ways WordPress reveals usernames by default: the users list in the API, author pages and the preview shown when a link is shared. None of them may show them.")]
-    [AllureLabel(ExplainWhyEn, "A username is half of the login credentials: whoever knows it only has to guess the password. This check also comes from a real problem: the admin's public name was their email address.")]
+    [AllureLabel(ExplainWhyEn, "A username is half of the login credentials: whoever knows it only has to guess the password.")]
     [AllureSeverity(Blocker)]
     public async Task UserListIsNotPublic()
     {
