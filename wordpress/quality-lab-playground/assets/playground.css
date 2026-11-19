@@ -291,3 +291,16 @@
 @media (pointer: coarse) { .qlp .qlp-info { width: 24px; height: 24px; font-size: 13px; } }
 .qlp-modal h4 { margin: 16px 0 4px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--qlp-muted); }
 .qlp-modal h4 + p { margin: 0; line-height: 1.55; }
+
+/* Tiri a canestro durante la partita: un piccolo campo scuro sotto la barra di avanzamento. */
+.qlp-shot {
+  display: flex; align-items: center; gap: 14px; margin-top: 12px; padding: 10px 14px;
+  background: #0b1a3a; border-radius: 10px; color: #fff;
+}
+.qlp-shot svg { width: 190px; height: auto; flex: none; overflow: visible; }
+.qlp-shot-net { transform-box: fill-box; transform-origin: center top; }
+.qlp-shot-rim { transform-box: fill-box; transform-origin: right center; }
+.qlp-shot-text { min-width: 0; }
+.qlp-shot-caption { margin: 0; font-size: 14px; font-weight: 600; line-height: 1.4; }
+.qlp-shot-score { margin: 4px 0 0; font-size: 13px; color: #c7d2fe; }
+@media (max-width: 420px) { .qlp-shot svg { width: 110px; } .qlp-shot { gap: 10px; } }
