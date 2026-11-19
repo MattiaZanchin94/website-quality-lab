@@ -308,6 +308,7 @@
 /* Il giocatore: una posa alla volta (palleggio, tiro, esultanza, delusione). */
 .qlp-shot .qlp-arms { display: none; }
 .qlp-shot[data-pose="dribble"] .qlp-arms-dribble,
+.qlp-shot[data-pose="gather"] .qlp-arms-gather,
 .qlp-shot[data-pose="shoot"] .qlp-arms-shoot,
 .qlp-shot[data-pose="cheer"] .qlp-arms-cheer,
 .qlp-shot[data-pose="sad"] .qlp-arms-sad { display: inline; }
