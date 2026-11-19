@@ -77,6 +77,7 @@ Each check runs on every browser and device (14 checks × 9 = 126 runs). On phon
 | CI/CD | GitHub Actions (browser and device matrix in the official Playwright container, scheduled and on-demand runs) |
 | Hosting of results | GitHub Pages |
 | Website integration | WordPress plugin (PHP, REST API, vanilla JS) |
+| Alerts | Telegram, to get a message when something is wrong with the site and when it works again |
 
 ## Project structure
 
@@ -91,7 +92,7 @@ Each check runs on every browser and device (14 checks × 9 = 126 runs). On phon
 │   ├── PlaygroundTests.cs            # regression: the page that shows these results
 │   └── PrivacyTests.cs               # regression: cookie consent (GDPR)
 ├── scripts/summary.mjs               # test results → summary.json for the website
-├── scripts/notify.mjs                # Telegram alert when the smoke checks change state
+├── scripts/notify.mjs                # Telegram alert when the site has a problem and when it recovers
 ├── wordpress/quality-lab-playground/ # WordPress plugin (shortcode + REST proxy)
 └── QualityLab.csproj
 ```
@@ -131,7 +132,10 @@ dotnet test --filter TestCategory=Smoke
 - **One source of truth for the menu.** Navigation tests are generated with `[TestCaseSource]` from a single ordered array: updating the menu means editing one line.
 - **Security of the run button.** The GitHub token lives only in `wp-config.php`; the browser talks to WordPress, never to GitHub. A global cooldown and a check for runs already in progress prevent abuse.
 - **Bot protection is not a site failure.** If the hosting provider's anti-bot protection shows a CAPTCHA to the test browser, the check is marked *not verifiable* (`Assert.Ignore`, with the reason) instead of failed. Tests never try to get past a CAPTCHA.
-- **Alerts only when something changes.** After each run `scripts/notify.mjs` compares the smoke checks with the previous run and sends a Telegram message only when they go from green to red, or back to green, so a problem that lasts all night doesn't send a message every hour. CAPTCHA blocks don't count. The bot token and chat id are repository secrets; a manual run with *test_alert* sends a test message.
+- **An alert when something is wrong.** If the essential (smoke) checks find a problem on the site, I get a Telegram message; a second message arrives when the problem is fixed.
+- **Tests respect the cookie banner.** The site asks for cookie consent: the tests behave like a privacy-conscious visitor and reject the banner when it appears. Data sent to Google Analytics is blocked anyway, so automated runs never show up in the visit statistics.
+- **Privacy is verified, not assumed.** The cookie consent check looks at what really happens in the browser: before the choice and after rejecting, there must be no Google Analytics cookies or external services, and Google must receive only consent-denied signals. Running from servers in the United States, it found that outside Europe statistics started before consent: the site now asks everyone for consent, wherever they are.
+- **A network hiccup is not a site outage.** If the connection drops while a page is opening, the test retries up to twice; a site that is really unreachable still fails the check.
 - **The checks never trigger themselves.** The Playground test verifies that the run button exists but never clicks it, otherwise every hourly run would start another one.
 
 ## Author

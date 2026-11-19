@@ -77,6 +77,7 @@ I controlli **smoke** coprono l'essenziale e sono i primi a segnalare un problem
 | CI/CD | GitHub Actions (matrice di browser e dispositivi nel contenitore ufficiale di Playwright, esecuzioni programmate e su richiesta) |
 | Pubblicazione dei risultati | GitHub Pages |
 | Integrazione con il sito | Plugin WordPress (PHP, REST API, JavaScript) |
+| Avvisi | Telegram, per ricevere un messaggio quando qualcosa non va nel sito e quando torna a funzionare |
 
 ## Struttura del progetto
 
@@ -91,7 +92,7 @@ I controlli **smoke** coprono l'essenziale e sono i primi a segnalare un problem
 │   ├── PlaygroundTests.cs            # regression: la pagina che mostra questi risultati
 │   └── PrivacyTests.cs               # regression: consenso ai cookie (GDPR)
 ├── scripts/summary.mjs               # risultati dei test → summary.json per il sito
-├── scripts/notify.mjs                # avviso su Telegram quando i controlli smoke cambiano stato
+├── scripts/notify.mjs                # avviso su Telegram quando il sito ha un problema e quando torna a posto
 ├── wordpress/quality-lab-playground/ # plugin WordPress (shortcode + proxy REST)
 └── QualityLab.csproj
 ```
@@ -131,7 +132,10 @@ dotnet test --filter TestCategory=Smoke
 - **Il menu è definito una volta sola.** I test di navigazione sono generati con `[TestCaseSource]` da un unico array ordinato: per aggiornare il menu basta modificare una riga.
 - **Sicurezza del pulsante.** Il token GitHub sta solo in `wp-config.php`; il browser parla con WordPress, mai con GitHub. Un cooldown globale e il controllo delle esecuzioni già in corso evitano abusi.
 - **La protezione anti-bot non è un errore del sito.** Se la protezione anti-bot dell'hosting mostra un CAPTCHA al browser di test, il controllo viene segnato come *non verificabile* (`Assert.Ignore`, con il motivo) invece che fallito. I test non provano mai a superare un CAPTCHA.
-- **Avvisi solo quando qualcosa cambia.** Dopo ogni esecuzione `scripts/notify.mjs` confronta i controlli smoke con l'esecuzione precedente e manda un messaggio su Telegram solo quando passano da verdi a rossi, o tornano verdi, così un problema che dura tutta la notte non manda un messaggio ogni ora. I blocchi da CAPTCHA non contano. Token del bot e chat id sono secrets del repository; un avvio manuale con *test_alert* manda un messaggio di prova.
+- **Un avviso quando qualcosa non va.** Se i controlli essenziali (smoke) segnalano un problema sul sito, ricevo un messaggio su Telegram; un secondo messaggio arriva quando il problema è risolto.
+- **I test rispettano il banner dei cookie.** Il sito chiede il consenso ai cookie: i test si comportano come un visitatore attento alla privacy e, quando il banner compare, lo rifiutano. Gli invii di dati a Google Analytics vengono comunque bloccati, così le esecuzioni automatiche non finiscono nelle statistiche delle visite.
+- **La privacy si verifica, non si dà per scontata.** Il controllo sul consenso ai cookie osserva cosa succede davvero nel browser: prima della scelta e dopo il rifiuto non devono esserci cookie di Google Analytics né servizi esterni, e Google deve ricevere solo segnali con consenso negato. Girando da server negli Stati Uniti, ha scoperto che fuori dall'Europa le statistiche partivano prima del consenso: ora il sito chiede il consenso a tutti, ovunque si trovino.
+- **Un intoppo di rete non è un sito giù.** Se la connessione cade mentre una pagina si apre, il test riprova fino a due volte; un sito davvero irraggiungibile fa comunque fallire il controllo.
 - **I test non si avviano da soli.** Il test della Playground verifica che il pulsante esista ma non lo clicca, altrimenti ogni esecuzione oraria ne avvierebbe un'altra.
 
 ## Autore
