@@ -75,8 +75,8 @@
       explainWhy: "Perché è importante",
       sections: { desktop: "💻 Computer", mobile: "📱 Smartphone e tablet" },
       securityNote:
-        "Controlli passivi: leggono le risposte del sito come farebbe un browser, senza attacchi. " +
-        "Connessione cifrata, certificato, protezioni inviate al browser e informazioni che WordPress non deve rivelare sono uguali per tutti i browser: vengono verificati una volta, con Chrome.",
+        "Questi controlli leggono le risposte del sito come farebbe un visitatore: connessione cifrata, certificato, " +
+        "protezioni inviate al browser e informazioni che WordPress non deve rivelare. Sono uguali per tutti i browser, quindi vengono verificati una volta, con Chrome.",
       durationSecurity: "tempo dei controlli di sicurezza",
       sectionsLabel: "Scegli dove verificare il sito",
       // Varianti di ogni browser: il computer e i dispositivi emulati con lo stesso motore.
@@ -231,8 +231,8 @@
       explainWhy: "Why it matters",
       sections: { desktop: "💻 Desktop", mobile: "📱 Phones and tablets" },
       securityNote:
-        "Passive checks: they read the site's responses like a browser would, with no attacks. " +
-        "Encrypted connection, certificate, protections sent to the browser and information WordPress must not reveal are the same for every browser: they are checked once, with Chrome.",
+        "These checks read the site's responses like a visitor would: encrypted connection, certificate, " +
+        "protections sent to the browser and information WordPress must not reveal. They're the same for every browser, so they're checked once, with Chrome.",
       durationSecurity: "time of the security checks",
       sectionsLabel: "Choose where to check the site",
       variantNames: { chromium: "computer", android: "Android", fold: "folded Galaxy Fold", msedge: "computer", firefox: "computer", webkit: "computer", iphone: "iPhone", ipad: "iPad portrait", ipadland: "iPad landscape" },
