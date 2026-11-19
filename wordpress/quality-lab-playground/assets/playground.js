@@ -145,6 +145,13 @@
         running: "in esecuzione",
         progressLabel: "Avanzamento della verifica",
       },
+      // Ogni controllo che finisce durante una partita è un tiro: canestro se passa, ferro se no.
+      shot: {
+        made: (title, where) => `🏀 Canestro! «${title}» su ${where}`,
+        missed: (title, where) => `🔔 Ferro! «${title}» su ${where} non è passato`,
+        score: (made, missed) => `Canestri ${made} · Ferri ${missed}`,
+        waiting: "Il primo tiro arriva appena finisce un controllo",
+      },
       steps: {
         starting: "Richiesta inviata",
         queued: "Preparazione dell'ambiente di verifica",
@@ -284,6 +291,12 @@
         running: "running",
         progressLabel: "Run progress",
       },
+      shot: {
+        made: (title, where) => `🏀 Swish! “${title}” on ${where}`,
+        missed: (title, where) => `🔔 Off the rim! “${title}” on ${where} didn't pass`,
+        score: (made, missed) => `Baskets ${made} · Rims ${missed}`,
+        waiting: "The first shot comes as soon as a check finishes",
+      },
       steps: {
         starting: "Request sent",
         queued: "Preparing the test environment",
@@ -322,7 +335,12 @@
     justUpdated: false,
     showWhy: false, // spiegazione "Perché devo aspettare?" aperta
     live: { seen: {}, allDoneAt: null, shown: 0, target: 0, startedAt: 0, since: 0, lastFrame: 0 },
+    shots: newShots(),
   });
+  // Tiri a canestro della partita seguita: già visti, in coda, punteggio.
+  function newShots() {
+    return { seen: {}, primed: false, queue: [], playing: false, made: 0, missed: 0, last: null, node: null };
+  }
   const courts = { functional: newCourt(), security: newCourt() };
   const AREAS = Object.keys(courts);
   const GAME_MINUTES = { functional: 3, security: 1 }; // durata tipica di una partita, per le spiegazioni
@@ -697,6 +715,7 @@
     live.target = 0;
     live.startedAt = Date.now();
     live.since = since || 0;
+    c.shots = newShots(); // nuova partita: punteggio da zero
   }
 
   // L'esecuzione nello stato è quella che stiamo seguendo?
@@ -802,7 +821,131 @@
         <span class="qlp-live-fill" style="width:${live.shown.toFixed(2)}%"></span>
       </div>
       ${now}
+      ${c.phase === "in_progress" || c.shots.made + c.shots.missed > 0 ? '<div class="qlp-shot-slot"></div>' : ""}
     </div>`;
+  }
+
+  /* ---------- Tiri a canestro durante la partita ---------- */
+  // Ogni controllo che finisce su un browser è un tiro: se passa, canestro pulito; se non passa,
+  // la palla prende il ferro ed esce. Il riquadro è un elemento solo, che sopravvive ai ridisegni
+  // della pagina (ogni 5 secondi), così un'animazione in corso non riparte da capo.
+
+  const SHOT_NAMES = {
+    chromium: "Chrome", msedge: "Edge", firefox: "Firefox", webkit: "Safari",
+    iphone: "iPhone", android: "Android", ipad: "iPad", ipadland: "iPad", fold: "Galaxy Fold",
+  };
+  const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function shotWidget(c) {
+    const sh = c.shots;
+    if (!sh.node) {
+      sh.node = document.createElement("div");
+      sh.node.className = "qlp-shot";
+      sh.node.innerHTML = `
+        <svg viewBox="0 0 240 130" aria-hidden="true" focusable="false">
+          <line x1="0" y1="124" x2="240" y2="124" stroke="#ffffff" stroke-opacity="0.25" stroke-width="2"/>
+          <line x1="210" y1="14" x2="210" y2="76" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>
+          <path class="qlp-shot-net" d="M170 54 L176 80 L194 80 L200 54" fill="none" stroke="#ffffff" stroke-opacity="0.8" stroke-width="2"/>
+          <line class="qlp-shot-rim" x1="168" y1="52" x2="204" y2="52" stroke="#f97316" stroke-width="5" stroke-linecap="round"/>
+          <g class="qlp-shot-ball" style="transform: translate(24px, 112px)">
+            <circle r="9" fill="#f97316" stroke="#7c2d12" stroke-width="1.5"/>
+            <path d="M-9 0 H9 M0 -9 V9" stroke="#7c2d12" stroke-width="1.2" fill="none"/>
+          </g>
+        </svg>
+        <div class="qlp-shot-text">
+          <p class="qlp-shot-caption"></p>
+          <p class="qlp-shot-score"></p>
+        </div>`;
+    }
+    updateShotText(c);
+    return sh.node;
+  }
+
+  function updateShotText(c) {
+    const sh = c.shots;
+    if (!sh.node) return;
+    const shot = sh.last;
+    sh.node.querySelector(".qlp-shot-caption").textContent = shot
+      ? (shot.result === "passed" ? T.shot.made : T.shot.missed)(shot.title, shot.where)
+      : T.shot.waiting;
+    sh.node.querySelector(".qlp-shot-score").textContent = T.shot.score(sh.made, sh.missed);
+  }
+
+  // Controlli finiti dall'ultimo aggiornamento: diventano tiri in coda.
+  function collectShots(area, st) {
+    const c = courts[area];
+    const sh = c.shots;
+    if (!st || !st.run || !isFollowedRun(c, st.run)) return;
+    const known = new Map(((state.summary && state.summary.tests) || []).map((t) => [t.key, t]));
+    const fresh = [];
+    let made = 0;
+    let missed = 0;
+    for (const [b, p] of Object.entries(st.progress || {})) {
+      for (const [key, result] of Object.entries((p && p.tests) || {})) {
+        if (result !== "passed" && result !== "failed") continue; // i "non verificabili" non sono tiri
+        const t = known.get(key);
+        if (t && (t.area === "security") !== (area === "security")) continue; // controlli dell'altro campetto
+        if (result === "passed") made++;
+        else missed++;
+        const id = b + "|" + key;
+        if (sh.seen[id]) continue;
+        sh.seen[id] = true;
+        // Pagina aperta a partita iniziata: i tiri già fatti contano nel punteggio, ma non si rigiocano.
+        if (sh.primed) fresh.push({ result, title: t ? titleOf(t) : key, where: SHOT_NAMES[b] || b });
+      }
+    }
+    sh.primed = true;
+    sh.made = made;
+    sh.missed = missed;
+    // Gli aggiornamenti arrivano ogni 5 secondi, anche con più tiri insieme: ne teniamo in coda
+    // al massimo 3, così l'animazione resta al passo con la partita.
+    sh.queue = sh.queue.concat(fresh).slice(-3);
+    playNextShot(c);
+  }
+
+  function playNextShot(c) {
+    const sh = c.shots;
+    if (sh.playing || !sh.queue.length) return;
+    const shot = sh.queue.shift();
+    sh.playing = true;
+    sh.last = shot;
+    updateShotText(c);
+    const done = () => {
+      sh.playing = false;
+      setTimeout(() => playNextShot(c), 250);
+    };
+    // Campetto non visibile o animazioni ridotte nelle preferenze del sistema: solo il testo.
+    if (!sh.node || !sh.node.isConnected || reducedMotion() || !sh.node.animate) {
+      setTimeout(done, 400);
+      return;
+    }
+    const ball = sh.node.querySelector(".qlp-shot-ball");
+    const at = (x, y, offset, opacity = 1) => ({ transform: `translate(${x}px, ${y}px)`, offset, opacity });
+    // Parabola del tiro, dal tiratore (24, 112) verso il ferro.
+    const arc = (x1, y1, upto) =>
+      Array.from({ length: 10 }, (_, i) => {
+        const k = (i + 1) / 10;
+        return at(24 + (x1 - 24) * k, 112 + (y1 - 112) * k - 150 * k * (1 - k), upto * k);
+      });
+    let frames;
+    if (shot.result === "passed") {
+      frames = [at(24, 112, 0), ...arc(186, 42, 0.62), at(186, 66, 0.76), at(186, 100, 0.9), at(186, 116, 1, 0)];
+      sh.node
+        .querySelector(".qlp-shot-net")
+        .animate([{ transform: "scaleY(1)" }, { transform: "scaleY(1.3)" }, { transform: "scaleY(1)" }], {
+          duration: 380, delay: 760, easing: "ease-out",
+        });
+    } else {
+      frames = [at(24, 112, 0), ...arc(166, 40, 0.58), at(146, 16, 0.72), at(124, 112, 0.88), at(106, 98, 0.94), at(92, 114, 1, 0)];
+      sh.node
+        .querySelector(".qlp-shot-rim")
+        .animate(
+          [{ transform: "rotate(0deg)" }, { transform: "rotate(-7deg)" }, { transform: "rotate(5deg)" }, { transform: "rotate(0deg)" }],
+          { duration: 360, delay: 640, easing: "ease-out" },
+        );
+    }
+    const anim = ball.animate(frames, { duration: 1300, easing: "linear" });
+    anim.finished.then(done, done);
   }
 
   // Animazione continua: a ogni passo la barra si avvicina al valore vero, senza mai tornare indietro.
@@ -1084,6 +1227,8 @@
         ${body}
       </div>`;
 
+    const shotSlot = root.querySelector(".qlp-shot-slot");
+    if (shotSlot) shotSlot.replaceWith(shotWidget(C()));
     const btn = root.querySelector(".qlp-run");
     if (btn) btn.addEventListener("click", startRun);
     const whyLink = root.querySelector(".qlp-why-link");
@@ -1230,6 +1375,7 @@
       const st = courtStatus(area);
       const run = st && st.run;
       if (!run || new Date(run.createdAt).getTime() < since) continue; // GitHub non la mostra ancora
+      collectShots(area, st);
 
       if (run.status === "completed") {
         c.phase = "refreshing";
