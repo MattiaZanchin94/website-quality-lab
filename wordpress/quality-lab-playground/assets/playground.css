@@ -304,3 +304,13 @@
 .qlp-shot-caption { margin: 0; font-size: 14px; font-weight: 600; line-height: 1.4; }
 .qlp-shot-score { margin: 4px 0 0; font-size: 13px; color: #c7d2fe; }
 @media (max-width: 420px) { .qlp-shot svg { width: 110px; } .qlp-shot { gap: 10px; } }
+
+/* Il giocatore: una posa alla volta (palleggio, tiro, esultanza, delusione). */
+.qlp-shot .qlp-arms { display: none; }
+.qlp-shot[data-pose="dribble"] .qlp-arms-dribble,
+.qlp-shot[data-pose="shoot"] .qlp-arms-shoot,
+.qlp-shot[data-pose="cheer"] .qlp-arms-cheer,
+.qlp-shot[data-pose="sad"] .qlp-arms-sad { display: inline; }
+/* La palla del palleggio si vede solo mentre palleggia: durante il tiro vola l'altra. */
+.qlp-shot:not([data-pose="dribble"]) .qlp-dribble-ball { opacity: 0; }
+.qlp-head { transform-box: fill-box; transform-origin: center bottom; }
