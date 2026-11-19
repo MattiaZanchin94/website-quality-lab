@@ -64,6 +64,9 @@ jobs:
       CHANNEL_ARGS: ${{ matrix.browser == 'msedge' && '-- Playwright.LaunchOptions.Channel=msedge' || '' }}
       # Dispositivo emulato (schermo, touch, user agent) letto dai test in QualityLabTest.cs.
       QLP_DEVICE: ${{ contains(fromJSON('["iphone","android","ipad","fold","ipadland"]'), matrix.browser) && matrix.browser || '' }}
+      # I controlli di sicurezza (header, redirect, certificato) danno lo stesso risultato con
+      # qualsiasi browser: girano solo su Chromium, invece di ripetere le stesse richieste 9 volte.
+      TEST_FILTER: ${{ matrix.browser != 'chromium' && '--filter TestCategory!=Security' || '' }}
       HOME: /root
 
     steps:
@@ -114,6 +117,7 @@ jobs:
           dotnet test --configuration Release --no-build
           --logger "console;verbosity=normal"
           --logger "GitHubActions;summary-include-passed=true;summary-include-skipped=true"
+          $TEST_FILTER
           $CHANNEL_ARGS
 
       - name: Upload Allure results
