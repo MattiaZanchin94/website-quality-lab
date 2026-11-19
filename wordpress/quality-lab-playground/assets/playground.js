@@ -150,7 +150,14 @@
         made: (title, where) => `🏀 Canestro! «${title}» su ${where}`,
         missed: (title, where) => `🔔 Ferro! «${title}» su ${where} non è passato`,
         score: (made, missed) => `Canestri ${made} · Ferri ${missed}`,
-        waiting: "Riscaldamento: il primo tiro arriva appena finisce un controllo",
+        // Didascalia tra un tiro e l'altro: segue le fasi dell'esecuzione su GitHub.
+        phase: {
+          starting: "📨 Richiesta inviata: il giocatore entra in campo",
+          waiting: "⏳ In coda: aspetta a bordo campo la fine della partita precedente",
+          setup: "🔧 Riscaldamento: GitHub prepara i browser",
+          playing: (title, where) => `▶ In campo: «${title}» su ${where}`,
+          publish: "🏁 Fine partita: pubblicazione dei risultati",
+        },
       },
       steps: {
         starting: "Richiesta inviata",
@@ -295,7 +302,13 @@
         made: (title, where) => `🏀 Swish! “${title}” on ${where}`,
         missed: (title, where) => `🔔 Off the rim! “${title}” on ${where} didn't pass`,
         score: (made, missed) => `Baskets ${made} · Rims ${missed}`,
-        waiting: "Warming up: the first shot comes as soon as a check finishes",
+        phase: {
+          starting: "📨 Request sent: the player walks onto the court",
+          waiting: "⏳ Queued: waiting courtside for the previous game to end",
+          setup: "🔧 Warming up: GitHub is preparing the browsers",
+          playing: (title, where) => `▶ On court: “${title}” on ${where}`,
+          publish: "🏁 Game over: publishing the results",
+        },
       },
       steps: {
         starting: "Request sent",
@@ -339,7 +352,7 @@
   });
   // Tiri a canestro della partita seguita: già visti, in coda, punteggio.
   function newShots() {
-    return { seen: {}, results: {}, primed: false, queue: [], playing: false, last: null, node: null, dribble: null };
+    return { seen: {}, results: {}, primed: false, queue: [], playing: false, last: null, lastAt: 0, node: null, dribble: null };
   }
   const courts = { functional: newCourt(), security: newCourt() };
   const AREAS = Object.keys(courts);
@@ -860,6 +873,7 @@
             <g class="qlp-head"><circle cx="104" cy="76" r="6" fill="#ffffff" stroke="none"/></g>
             <path d="M104 84 V104 M104 104 L99 123 M104 104 L110 123"/>
             <path class="qlp-arms qlp-arms-dribble" d="M101 88 L92 99 M107 88 L113 97"/>
+            <path class="qlp-arms qlp-arms-gather" d="M101 88 L110 96 L114 92 M107 88 L116 93"/>
             <path class="qlp-arms qlp-arms-shoot" d="M101 88 L97 66 M107 88 L112 66"/>
             <path class="qlp-arms qlp-arms-cheer" d="M101 88 L89 65 M107 88 L120 65"/>
             <path class="qlp-arms qlp-arms-sad" d="M101 88 L91 81 L98 75 M107 88 L117 81 L110 75"/>
@@ -903,10 +917,24 @@
     sh.made = made;
     sh.missed = missed;
     const shot = sh.last && shotInView(sh.last.b) ? sh.last : null;
-    sh.node.querySelector(".qlp-shot-caption").textContent = shot
+    const recent = shot && (sh.playing || Date.now() - sh.lastAt < 2500);
+    sh.node.querySelector(".qlp-shot-caption").textContent = recent
       ? (shot.result === "passed" ? T.shot.made : T.shot.missed)(shot.title, shot.where)
-      : T.shot.waiting;
+      : phaseCaption(c) || (shot ? (shot.result === "passed" ? T.shot.made : T.shot.missed)(shot.title, shot.where) : T.shot.phase.setup);
     sh.node.querySelector(".qlp-shot-score").textContent = T.shot.score(made, missed);
+  }
+
+  // Cosa sta facendo l'esecuzione su GitHub, con le parole del campetto.
+  function phaseCaption(c) {
+    if (c.phase === "starting") return T.shot.phase.starting;
+    if (c.phase === "refreshing") return T.shot.phase.publish;
+    if (c.waiting) return T.shot.phase.waiting;
+    const info = c === C() ? liveInfo() : null;
+    if (!info || info.done + info.current.length === 0) return T.shot.phase.setup;
+    const now = info.current.find((x) => shotInView(x.b));
+    if (now) return T.shot.phase.playing(titleOf(now.t), SHOT_NAMES[now.b] || now.b);
+    if (info.total && info.done >= info.total) return T.shot.phase.publish;
+    return null; // tra un controllo e l'altro resta l'ultimo tiro
   }
 
   // Controlli finiti dall'ultimo aggiornamento: diventano tiri in coda.
@@ -966,9 +994,12 @@
     const shot = sh.queue.shift();
     sh.playing = true;
     sh.last = shot;
+    sh.lastAt = Date.now();
     updateShotText(c);
     const done = () => {
       sh.playing = false;
+      sh.lastAt = Date.now();
+      setTimeout(() => updateShotText(c), 2600); // dopo il tiro la didascalia torna a seguire la CI
       setTimeout(() => {
         playNextShot(c);
         startDribble(c); // nessun altro tiro in coda: si torna a palleggiare
@@ -983,33 +1014,38 @@
     const player = node.querySelector(".qlp-player");
     const made = shot.result === "passed";
 
-    // 1. Si ferma, porta la palla sopra la testa, salta e tira.
+    // 1. Si ferma e raccoglie la palla al petto, poi la alza sopra la testa, salta e la rilascia.
+    //    La palla resta tra le sue mani fino al rilascio, nel punto più alto del salto.
+    const DURATION = 1700;
     stopDribble(sh);
-    node.dataset.pose = "shoot";
+    node.dataset.pose = "gather";
+    setTimeout(() => node.isConnected && (node.dataset.pose = "shoot"), 170);
     player.animate([{ transform: "translateY(0)" }, { transform: "translateY(-8px)" }, { transform: "translateY(0)" }], {
-      duration: 520, delay: 120, easing: "ease-out",
+      duration: 440, delay: 360, easing: "ease-out",
     });
 
-    // 2. La palla: dal palleggio a sopra la testa, poi la parabola verso il ferro.
+    // 2. La palla: dal palleggio al petto (mani in avanti), sopra la testa (mani alzate),
+    //    su con il salto e, dal punto più alto, la parabola verso il ferro.
     const at = (x, y, offset, opacity = 1) => ({ transform: `translate(${x}px, ${y}px)`, offset, opacity });
+    const RELEASE = 0.34; // istante del rilascio, in proporzione alla durata
     const arc = (x1, y1, upto) =>
       Array.from({ length: 10 }, (_, i) => {
         const k = (i + 1) / 10;
-        return at(105 + (x1 - 105) * k, 57 + (y1 - 57) * k - 120 * k * (1 - k), 0.14 + (upto - 0.14) * k);
+        return at(105 + (x1 - 105) * k, 50 + (y1 - 50) * k - 120 * k * (1 - k), RELEASE + (upto - RELEASE) * k);
       });
-    const start = [at(89, 104, 0), at(105, 57, 0.14)];
+    const start = [at(89, 106, 0), at(115, 89, 0.1), at(105, 58, 0.22), at(105, 50, RELEASE)];
     const frames = made
-      ? [...start, ...arc(186, 42, 0.62), at(186, 66, 0.76), at(186, 100, 0.9), at(186, 116, 1, 0)]
-      : [...start, ...arc(166, 40, 0.58), at(150, 18, 0.72), at(142, 112, 0.88), at(134, 100, 0.94), at(126, 114, 1, 0)];
-    const ball = node.querySelector(".qlp-shot-ball").animate(frames, { duration: 1500, easing: "linear" });
+      ? [...start, ...arc(186, 42, 0.66), at(186, 66, 0.78), at(186, 100, 0.9), at(186, 116, 1, 0)]
+      : [...start, ...arc(166, 40, 0.62), at(150, 18, 0.74), at(142, 112, 0.88), at(134, 100, 0.94), at(126, 114, 1, 0)];
+    const ball = node.querySelector(".qlp-shot-ball").animate(frames, { duration: DURATION, easing: "linear" });
     if (made) {
       node.querySelector(".qlp-shot-net").animate([{ transform: "scaleY(1)" }, { transform: "scaleY(1.3)" }, { transform: "scaleY(1)" }], {
-        duration: 380, delay: 840, easing: "ease-out",
+        duration: 380, delay: DURATION * 0.68, easing: "ease-out",
       });
     } else {
       node.querySelector(".qlp-shot-rim").animate(
         [{ transform: "rotate(0deg)" }, { transform: "rotate(-7deg)" }, { transform: "rotate(5deg)" }, { transform: "rotate(0deg)" }],
-        { duration: 360, delay: 780, easing: "ease-out" },
+        { duration: 360, delay: DURATION * 0.62, easing: "ease-out" },
       );
     }
 
@@ -1033,7 +1069,7 @@
               { duration: 1000, easing: "ease-in-out" },
             ).finished,
           ]);
-    }, 950);
+    }, DURATION * 0.66);
 
     // 4. Finita la reazione si riprende a palleggiare (o si tira di nuovo, se ci sono altri risultati).
     ball.finished
