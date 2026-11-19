@@ -6,9 +6,9 @@
 
 🇬🇧 [Read in English](README.md)
 
-Suite di test end-to-end che controlla di continuo il mio sito, [mattiazanchin.com](https://mattiazanchin.com), su quattro browser per computer e cinque smartphone e tablet emulati, e ne pubblica i risultati sul sito stesso.
+Suite di test end-to-end che controlla di continuo il mio sito, [mattiazanchin.com](https://mattiazanchin.com), su quattro browser per computer e cinque smartphone e tablet emulati, ne verifica la sicurezza con controlli passivi e pubblica i risultati sul sito stesso.
 
-Nella pagina **[Playground](https://mattiazanchin.com/playground/)** chiunque può vedere gli ultimi risultati, scritti in linguaggio semplice, e **avviare una nuova verifica**. La pagina riconosce il dispositivo di chi la visita: da computer apre i browser per computer, da iPhone, Android o iPad apre ed esegue l'emulazione di quel dispositivo. La pagina è disponibile in italiano e in inglese.
+Nella pagina **[Playground](https://mattiazanchin.com/playground/)** chiunque può vedere gli ultimi risultati, scritti in linguaggio semplice, e **avviare una nuova verifica**. La pagina riconosce il dispositivo di chi la visita: da computer apre i browser per computer, da iPhone, Android o iPad apre ed esegue l'emulazione di quel dispositivo. Una terza sezione, *Sicurezza*, mostra i controlli su connessione cifrata, certificato e protezioni del sito. La pagina è disponibile in italiano e in inglese.
 
 ---
 
@@ -48,7 +48,7 @@ Il livello 2 richiede test che non condividano stato e non dipendano dall'ordine
 
 ## Cosa viene verificato
 
-Ogni controllo gira su ogni browser e dispositivo (14 controlli × 9 = 126 esecuzioni). Su smartphone e tablet i test di navigazione aprono prima il menu mobile del sito, come farebbe una persona, quando il sito lo mostra (un iPad in orizzontale riceve il menu desktop).
+I 14 controlli funzionali girano su ogni browser e dispositivo (14 × 9 = 126 esecuzioni); gli 8 controlli di sicurezza danno lo stesso risultato con qualsiasi browser e girano una volta sola, su Chromium (134 esecuzioni in tutto). Su smartphone e tablet i test di navigazione aprono prima il menu mobile del sito, come farebbe una persona, quando il sito lo mostra (un iPad in orizzontale riceve il menu desktop).
 
 | Tipo | Area | Controllo | Priorità |
 |---|---|---|---|
@@ -61,6 +61,14 @@ Ogni controllo gira su ogni browser e dispositivo (14 controlli × 9 = 126 esecu
 | Regression | Playground | Si possono vedere i risultati di un singolo browser | Major |
 | Regression | Playground | Si possono filtrare i controlli per priorità | Major |
 | Regression | Privacy | Il sito rispetta il consenso ai cookie (GDPR): niente Google Analytics né servizi esterni prima della scelta e dopo il rifiuto | Major |
+| Regression | Sicurezza | Il sito usa sempre una connessione sicura: http e www portano a https con redirect permanenti | Blocker |
+| Regression | Sicurezza | Il certificato di sicurezza è valido e non scade nei prossimi 14 giorni | Blocker |
+| Regression | Sicurezza | L'elenco degli utenti non è pubblico (API utenti, pagine autore, anteprima dei link) | Blocker |
+| Regression | Sicurezza | Il browser è obbligato a usare HTTPS (HSTS di almeno 6 mesi) | Major |
+| Regression | Sicurezza | Il sito non può essere inserito in altri siti (X-Frame-Options, contro il clickjacking) | Major |
+| Regression | Sicurezza | Il browser riceve le protezioni di base (nosniff, Referrer-Policy) | Major |
+| Regression | Sicurezza | I file di sistema non sono accessibili (readme, log, configurazione, elenco dei file, XML-RPC) | Major |
+| Regression | Sicurezza | Le pagine non caricano contenuti non protetti (niente http:// in pagine https) | Major |
 
 I controlli **smoke** coprono l'essenziale e sono i primi a segnalare un problema; quelli **regression** approfondiscono le singole funzionalità. Sono categorie NUnit, quindi si possono eseguire separatamente.
 
@@ -90,7 +98,8 @@ I controlli **smoke** coprono l'essenziale e sono i primi a segnalare un problem
 │   ├── NavigationTests.cs            # smoke, generati dalla definizione del menu
 │   ├── ArticleTests.cs               # regression
 │   ├── PlaygroundTests.cs            # regression: la pagina che mostra questi risultati
-│   └── PrivacyTests.cs               # regression: consenso ai cookie (GDPR)
+│   ├── PrivacyTests.cs               # regression: consenso ai cookie (GDPR)
+│   └── SecurityTests.cs              # regression: sicurezza, controlli passivi (solo Chromium in CI)
 ├── scripts/summary.mjs               # risultati dei test → summary.json per il sito
 ├── scripts/notify.mjs                # avviso su Telegram quando il sito ha un problema e quando torna a posto
 ├── wordpress/quality-lab-playground/ # plugin WordPress (shortcode + proxy REST)
@@ -120,6 +129,9 @@ dotnet test -- Playwright.LaunchOptions.Channel=msedge
 
 # Solo i controlli smoke
 dotnet test --filter TestCategory=Smoke
+
+# Solo i controlli di sicurezza
+dotnet test --filter TestCategory=Security
 ```
 
 ## Scelte di progettazione
@@ -135,6 +147,8 @@ dotnet test --filter TestCategory=Smoke
 - **Un avviso quando qualcosa non va.** Se i controlli essenziali (smoke) segnalano un problema sul sito, ricevo un messaggio su Telegram; un secondo messaggio arriva quando il problema è risolto.
 - **I test rispettano il banner dei cookie.** Il sito chiede il consenso ai cookie: i test si comportano come un visitatore attento alla privacy e, quando il banner compare, lo rifiutano. Gli invii di dati a Google Analytics vengono comunque bloccati, così le esecuzioni automatiche non finiscono nelle statistiche delle visite.
 - **La privacy si verifica, non si dà per scontata.** Il controllo sul consenso ai cookie osserva cosa succede davvero nel browser: prima della scelta e dopo il rifiuto non devono esserci cookie di Google Analytics né servizi esterni, e Google deve ricevere solo segnali con consenso negato. Girando da server negli Stati Uniti, ha scoperto che fuori dall'Europa le statistiche partivano prima del consenso: ora il sito chiede il consenso a tutti, ovunque si trovino.
+- **Sicurezza verificata senza attaccare.** I controlli di sicurezza sono passivi: leggono redirect, header, certificato e file pubblici come farebbe un browser, senza scansioni aggressive (su un hosting condiviso equivarrebbero a un attacco). Il primo controllo, che segue ogni redirect un passaggio alla volta, ha scoperto che solo la home passava a HTTPS: le altre pagine si aprivano anche in chiaro. Ora il server forza HTTPS ovunque.
+- **Prima si corregge, poi si pubblica.** I punti deboli trovati (nome utente ricavabile dall'API, header mancanti, pagine in http) sono stati corretti prima di mostrare i controlli nella Playground: una pagina pubblica non deve diventare la mappa delle debolezze del sito.
 - **Un intoppo di rete non è un sito giù.** Se la connessione cade mentre una pagina si apre, il test riprova fino a due volte; un sito davvero irraggiungibile fa comunque fallire il controllo.
 - **I test non si avviano da soli.** Il test della Playground verifica che il pulsante esista ma non lo clicca, altrimenti ogni esecuzione oraria ne avvierebbe un'altra.
 

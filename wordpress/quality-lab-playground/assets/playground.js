@@ -66,7 +66,11 @@
         "Come al campetto si gioca a turno: una partita alla volta e, tra un avvio e l'altro dei visitatori, 10 minuti per pulire il parquet. È una pausa uguale per tutti, perché il sito non si affatichi.",
         "L'iPad viene provato sia in verticale sia in orizzontale; il Galaxy Fold solo nelle esecuzioni automatiche.",
       ],
-      sections: { desktop: "💻 Computer", mobile: "📱 Smartphone e tablet" },
+      sections: { desktop: "💻 Computer", mobile: "📱 Smartphone e tablet", security: "🔒 Sicurezza" },
+      securityNote:
+        "Controlli passivi: leggono le risposte del sito come farebbe un browser, senza attacchi. " +
+        "Connessione cifrata, certificato, protezioni inviate al browser e informazioni che WordPress non deve rivelare sono uguali per tutti i browser: vengono verificati una volta, con Chrome.",
+      durationSecurity: "tempo dei controlli di sicurezza",
       sectionsLabel: "Scegli dove verificare il sito",
       // Varianti di ogni browser: il computer e i dispositivi emulati con lo stesso motore.
       variantNames: { chromium: "computer", android: "Android", fold: "Galaxy Fold chiuso", msedge: "computer", firefox: "computer", webkit: "computer", iphone: "iPhone", ipad: "iPad verticale", ipadland: "iPad orizzontale" },
@@ -197,7 +201,11 @@
         "Like at the playground, everyone takes turns: one game at a time and, between visitors' runs, 10 minutes to mop the court. The pause is the same for everyone, so the site doesn't get tired.",
         "The iPad is tested both in portrait and in landscape; the Galaxy Fold only in the automatic runs.",
       ],
-      sections: { desktop: "💻 Desktop", mobile: "📱 Phones and tablets" },
+      sections: { desktop: "💻 Desktop", mobile: "📱 Phones and tablets", security: "🔒 Security" },
+      securityNote:
+        "Passive checks: they read the site's responses like a browser would, with no attacks. " +
+        "Encrypted connection, certificate, protections sent to the browser and information WordPress must not reveal are the same for every browser: they are checked once, with Chrome.",
+      durationSecurity: "time of the security checks",
       sectionsLabel: "Choose where to check the site",
       variantNames: { chromium: "computer", android: "Android", fold: "folded Galaxy Fold", msedge: "computer", firefox: "computer", webkit: "computer", iphone: "iPhone", ipad: "iPad portrait", ipadland: "iPad landscape" },
       failedOn: (names) => `not passed on: ${names}`,
@@ -281,7 +289,7 @@
     summary: null,
     status: null,
     phase: "idle", // idle | starting | queued | in_progress | refreshing
-    section: "desktop", // "desktop" (browser per computer) oppure "mobile" (dispositivi emulati)
+    section: "desktop", // "desktop" (browser per computer), "mobile" (dispositivi emulati) o "security"
     view: "all", // scheda selezionata: "all" oppure un browser o dispositivo della sezione
     priority: "all", // filtro dei controlli: "all", "blocker" oppure "major"
     message: null,
@@ -397,6 +405,13 @@
       // Il Galaxy Fold gira solo nelle esecuzioni automatiche: niente pulsante.
       run: { all: "mobile", iphone: "iphone", android: "android", ipad: "ipad" },
     },
+    // Controlli di sicurezza: stesso risultato con qualsiasi browser, quindi girano solo su Chrome.
+    // Il pulsante avvia la verifica su Chrome, che comprende anche questi controlli.
+    security: {
+      names: { chromium: "Chrome" },
+      families: { chromium: ["chromium"] },
+      run: { all: "chromium" },
+    },
   };
   let BROWSER_NAMES, FAMILIES, FAMILY_OF, RUN_KEY;
   function setSection(section) {
@@ -405,6 +420,10 @@
     FAMILY_OF = Object.fromEntries(Object.entries(FAMILIES).flatMap(([f, vs]) => vs.map((v) => [v, f])));
   }
   const isMobileSection = () => state.section === "mobile";
+  const isSecuritySection = () => state.section === "security";
+  // Ogni controllo compare in una sola sezione: quelli di sicurezza nella loro, gli altri in Computer
+  // e Smartphone. I summary più vecchi non hanno "area": sono tutti controlli funzionali.
+  const inSection = (t) => (t.area === "security") === isSecuritySection();
 
   // Dispositivo di chi visita: iPhone, iPad (anche quando Safari si presenta come Mac) o Android.
   // Apre la sezione e la scheda corrispondenti; gli altri dispositivi partono dalla sezione Computer.
@@ -435,7 +454,7 @@
     if (!s || !s.tests) return s;
     const present = s.browsers || [];
     const fams = Object.keys(FAMILIES).filter((f) => FAMILIES[f].some((v) => present.includes(v)));
-    const tests = s.tests.map((t) => {
+    const tests = s.tests.filter(inSection).map((t) => {
       const browsers = {};
       const durations = {};
       const failedVariants = {};
@@ -469,6 +488,7 @@
       totalMs: (latestRun && latestRun.totalMs) || null,
       trigger: (latestRun && latestRun.trigger) || s.trigger,
       tests,
+      checks: tests.length,
       runs,
       browsers: fams,
       total: all.length,
@@ -517,8 +537,10 @@
   // Legenda in due gruppi con il loro titolo: tipologia di test e priorità.
   function renderLegend(s) {
     const groups = [];
-    if (s.tests.some((t) => TYPE_NAMES[t.type])) {
-      groups.push([T.legendTypes, [[renderType("smoke"), T.types.smoke[1]], [renderType("regression"), T.types.regression[1]]]]);
+    // Solo le tipologie presenti nella sezione (es. la Sicurezza non ha controlli Smoke).
+    const types = Object.keys(TYPE_NAMES).filter((type) => s.tests.some((t) => t.type === type));
+    if (types.length) {
+      groups.push([T.legendTypes, types.map((type) => [renderType(type), T.types[type][1]])]);
     }
     if (s.tests.some((t) => t.priority)) {
       groups.push([T.legendPriorities, [[renderPriority("blocker"), T.priorities.blocker[1]], [renderPriority("major"), T.priorities.major[1]]]]);
@@ -618,7 +640,7 @@
     if (!state.following || !st || !isFollowedRun(st.run) || !state.summary) return null;
     const browsers = runBrowsers(st.run);
     const progress = st.progress || {};
-    const tests = state.summary.tests.filter((t) => t.key);
+    const tests = state.summary.tests.filter((t) => t.key && inSection(t)); // solo i controlli della sezione aperta
     const now = Date.now();
     let done = 0;
     let partial = 0;
@@ -758,8 +780,12 @@
         skipped: s.skipped || 0,
         total: s.total,
         successRate: s.successRate,
-        durationMs: totalDuration(s),
-        totalMs: s.totalMs || null,
+        // Sicurezza: i controlli girano su Chrome insieme a quelli funzionali, quindi la durata
+        // della macchina non dice nulla. Mostriamo la somma dei soli controlli di sicurezza.
+        durationMs: isSecuritySection()
+          ? s.tests.reduce((sum, t) => sum + ((t.durations && t.durations.chromium) || 0), 0)
+          : totalDuration(s),
+        totalMs: isSecuritySection() ? null : s.totalMs || null,
         startedAt: s.startedAt,
         trigger: s.trigger,
         status: s.status,
@@ -795,6 +821,7 @@
   }
 
   function renderTabs(s) {
+    if (isSecuritySection()) return ""; // un solo browser: niente schede
     const known = Object.keys(BROWSER_NAMES);
     const tabs = [["all", isMobileSection() ? T.allDevices : T.allBrowsers], ...known.map((b) => [b, BROWSER_NAMES[b]])];
     return `<div class="qlp-tabs" role="tablist" aria-label="${esc(isMobileSection() ? T.tabsLabelMobile : T.tabsLabel)}">${tabs
@@ -817,7 +844,9 @@
   function renderDurationStat(d) {
     const parallel = state.view === "all" ? (isMobileSection() ? T.parallelDevices : T.parallelBrowsers) : "";
     if (!d.totalMs) {
-      const label = state.view === "all" ? (isMobileSection() ? T.durationAllMobile : T.durationAll) : T.duration;
+      const label = isSecuritySection()
+        ? T.durationSecurity
+        : state.view === "all" ? (isMobileSection() ? T.durationAllMobile : T.durationAll) : T.duration;
       return `<div class="qlp-stat"><span class="qlp-num">${minutes(d.durationMs)}</span><span class="qlp-label">${esc(label)}</span></div>`;
     }
     return `<div class="qlp-stat"><span class="qlp-num">${minutes(d.totalMs)}</span><span class="qlp-label">${esc(T.totalDuration)}</span><span class="qlp-sub">${esc(T.testsPart(minutes(d.durationMs), parallel))}</span></div>`;
@@ -897,7 +926,7 @@
                     return `<li class="${rowClass}">
                       <span class="qlp-icon" aria-label="${esc(liveRow || st)}">${icon}</span>
                       <span class="qlp-name">${esc(titleOf(t))}${t.priority ? ` ${renderPriority(priorityOf(t))}` : ""}</span>
-                      ${state.view === "all" ? renderBrowsers(t, info) : ""}
+                      ${state.view === "all" && !isSecuritySection() ? renderBrowsers(t, info) : ""}
                       <span class="qlp-dur">${liveRow ? "—" : seconds(ms)}</span>
                     </li>`;
                   })
@@ -917,7 +946,9 @@
           ${renderButton()}
         </div>
         ${
-          isMobileSection()
+          isSecuritySection()
+            ? `<p class="qlp-device-note">${esc(T.securityNote)}</p>`
+            : isMobileSection()
             ? `<p class="qlp-device-note">${esc(T.mobileNote)}</p>`
             : isMobileVisitor()
               ? `<p class="qlp-device-note">${esc(T.mobileVisitor)}</p>`

@@ -56,6 +56,8 @@ for (const r of results) {
     order: Number(label(r, "order")) || null,
     // [Category("Smoke")] / [Category("Regression")] in C# diventano tag Allure.
     type: (r.labels ?? []).find((l) => l.name === "tag" && /^(smoke|regression)$/i.test(l.value))?.value.toLowerCase() ?? null,
+    // [Category("Security")]: i controlli di sicurezza hanno una sezione a parte nella pagina Playground.
+    area: (r.labels ?? []).some((l) => l.name === "tag" && /^security$/i.test(l.value)) ? "security" : "functional",
     browsers: {}, // stato per browser, es. { chromium: "passed", firefox: "failed" }
     durations: {}, // durata in ms per browser
   };
