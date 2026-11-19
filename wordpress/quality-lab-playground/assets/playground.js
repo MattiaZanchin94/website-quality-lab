@@ -66,7 +66,10 @@
         "Come al campetto si gioca a turno: una partita alla volta e, tra un avvio e l'altro dei visitatori, 10 minuti per pulire il parquet. È una pausa uguale per tutti, perché il sito non si affatichi.",
         "L'iPad viene provato sia in verticale sia in orizzontale; il Galaxy Fold solo nelle esecuzioni automatiche.",
       ],
-      sections: { desktop: "💻 Computer", mobile: "📱 Smartphone e tablet", security: "🔒 Sicurezza" },
+      // Primo livello: cosa si verifica. Secondo livello (solo Funzionalità): dove.
+      areas: { functional: "🧭 Funzionalità", security: "🔒 Sicurezza" },
+      areasLabel: "Scegli cosa verificare",
+      sections: { desktop: "💻 Computer", mobile: "📱 Smartphone e tablet" },
       securityNote:
         "Controlli passivi: leggono le risposte del sito come farebbe un browser, senza attacchi. " +
         "Connessione cifrata, certificato, protezioni inviate al browser e informazioni che WordPress non deve rivelare sono uguali per tutti i browser: vengono verificati una volta, con Chrome.",
@@ -122,8 +125,10 @@
         `🧹 Stanno pulendo il parquet: il campetto torna libero tra ${min === 1 ? "1 minuto" : `${min} minuti`}. Intanto puoi guardare i risultati dell'ultima partita.`,
       // Spiegazioni nel tooltip del pulsante: perché si aspetta, con le regole del campetto.
       whyLink: "Perché devo aspettare?",
-      whyBusy: "Come al campetto, si gioca una partita alla volta: chi arriva aspetta il suo turno a bordo campo. La partita dura circa 3 minuti.",
-      whyCleaning: "Una partita ogni 10 minuti, uguale per tutti i visitatori: tra una partita e l'altra si pulisce il parquet, così il sito non si affatica e il campetto resta aperto a tutti.",
+      whyBusy: (min) =>
+        `Come al campetto, si gioca una partita alla volta: chi arriva aspetta il suo turno a bordo campo. La partita dura circa ${min === 1 ? "1 minuto" : `${min} minuti`}.`,
+      whyCleaning: (min) =>
+        `Una partita ogni ${min} minuti, uguale per tutti i visitatori: tra una partita e l'altra si pulisce il parquet, così il sito non si affatica e il campetto resta aperto a tutti.`,
       live: {
         starting: "Richiesta inviata",
         setup: "Preparazione dei browser",
@@ -201,7 +206,9 @@
         "Like at the playground, everyone takes turns: one game at a time and, between visitors' runs, 10 minutes to mop the court. The pause is the same for everyone, so the site doesn't get tired.",
         "The iPad is tested both in portrait and in landscape; the Galaxy Fold only in the automatic runs.",
       ],
-      sections: { desktop: "💻 Desktop", mobile: "📱 Phones and tablets", security: "🔒 Security" },
+      areas: { functional: "🧭 Functionality", security: "🔒 Security" },
+      areasLabel: "Choose what to check",
+      sections: { desktop: "💻 Desktop", mobile: "📱 Phones and tablets" },
       securityNote:
         "Passive checks: they read the site's responses like a browser would, with no attacks. " +
         "Encrypted connection, certificate, protections sent to the browser and information WordPress must not reveal are the same for every browser: they are checked once, with Chrome.",
@@ -254,8 +261,10 @@
       courtCleaning: (min) =>
         `🧹 They're mopping the court: it's free again in ${min === 1 ? "1 minute" : `${min} minutes`}. Meanwhile, have a look at the results of the last game.`,
       whyLink: "Why do I have to wait?",
-      whyBusy: "Like at the playground, one game at a time: whoever arrives waits for their turn courtside. A game lasts about 3 minutes.",
-      whyCleaning: "One game every 10 minutes, the same for every visitor: between games the court gets mopped, so the site doesn't get tired and the court stays open to everyone.",
+      whyBusy: (min) =>
+        `Like at the playground, one game at a time: whoever arrives waits for their turn courtside. A game lasts about ${min === 1 ? "1 minute" : `${min} minutes`}.`,
+      whyCleaning: (min) =>
+        `One game every ${min} minutes, the same for every visitor: between games the court gets mopped, so the site doesn't get tired and the court stays open to everyone.`,
       live: {
         starting: "Request sent",
         setup: "Preparing the browsers",
@@ -288,17 +297,50 @@
   const state = {
     summary: null,
     status: null,
-    phase: "idle", // idle | starting | queued | in_progress | refreshing
     section: "desktop", // "desktop" (browser per computer), "mobile" (dispositivi emulati) o "security"
+    lastFunctionalSection: "desktop", // sezione a cui tornare passando da Sicurezza a Funzionalità
     view: "all", // scheda selezionata: "all" oppure un browser o dispositivo della sezione
     priority: "all", // filtro dei controlli: "all", "blocker" oppure "major"
+  };
+
+  // Due campetti indipendenti: Funzionalità (computer e dispositivi) e Sicurezza.
+  // Ognuno ha la sua partita, la sua barra di avanzamento, i suoi messaggi e la sua pausa:
+  // si può giocare su entrambi nello stesso momento.
+  const newCourt = () => ({
+    phase: "idle", // idle | starting | queued | in_progress | refreshing
     message: null,
     messageKind: "info", // "info" oppure "warning" (avviso evidenziato)
-    following: false, // true mentre la pagina segue un'esecuzione
+    following: false, // true mentre la pagina segue un'esecuzione di questo campetto
     waiting: false, // true se l'esecuzione seguita è in coda dietro un'altra
     justUpdated: false,
     showWhy: false, // spiegazione "Perché devo aspettare?" aperta
-  };
+    live: { seen: {}, allDoneAt: null, shown: 0, target: 0, startedAt: 0, since: 0, lastFrame: 0 },
+  });
+  const courts = { functional: newCourt(), security: newCourt() };
+  const AREAS = Object.keys(courts);
+  const GAME_MINUTES = { functional: 3, security: 1 }; // durata tipica di una partita, per le spiegazioni
+  const areaOfSection = (section) => (section === "security" ? "security" : "functional");
+  const currentArea = () => areaOfSection(state.section);
+  const C = () => courts[currentArea()]; // il campetto aperto nella pagina
+
+  // Stato di un campetto da /status. Il plugin precedente (un solo campetto) non ha "courts":
+  // in quel caso tutto vale per Funzionalità e la Sicurezza non si può avviare.
+  function courtStatus(area) {
+    const st = state.status;
+    if (!st) return null;
+    if (st.courts) return { configured: st.configured, ...(st.courts[area] || {}) };
+    return area === "functional" ? st : { configured: false };
+  }
+
+  // Statistiche delle visite (Google Analytics, solo con il consenso del visitatore: gtag rispetta
+  // la scelta fatta nel banner dei cookie). Nessun dato personale: solo quale scheda o campetto.
+  function track(event, params) {
+    try {
+      if (typeof window.gtag === "function") window.gtag("event", event, params);
+    } catch (e) {
+      // Le statistiche non devono mai interferire con la pagina.
+    }
+  }
 
   /* ---------- Dati ---------- */
 
@@ -406,11 +448,11 @@
       run: { all: "mobile", iphone: "iphone", android: "android", ipad: "ipad" },
     },
     // Controlli di sicurezza: stesso risultato con qualsiasi browser, quindi girano solo su Chrome.
-    // Il pulsante avvia la verifica su Chrome, che comprende anche questi controlli.
+    // Hanno il loro campetto: il pulsante avvia solo questi controlli (circa un minuto).
     security: {
       names: { chromium: "Chrome" },
       families: { chromium: ["chromium"] },
-      run: { all: "chromium" },
+      run: { all: "security" },
     },
   };
   let BROWSER_NAMES, FAMILIES, FAMILY_OF, RUN_KEY;
@@ -480,7 +522,10 @@
     const verified = all.length - skipped;
     const slowest = Object.values(runs).reduce((m, r) => Math.max(m, r.durationMs || 0), 0);
     // Ultima esecuzione che ha toccato questa sezione (es. solo i dispositivi, avviata da un visitatore).
-    const latestRun = Object.values(runs).reduce((a, b) => (!a || new Date(b.startedAt) > new Date(a.startedAt) ? b : a), null);
+    // Nella Sicurezza: l'ultima partita di sicurezza (che può essere più recente di quella dei browser).
+    const latestRun = isSecuritySection() && s.securityRun
+      ? s.securityRun
+      : Object.values(runs).reduce((a, b) => (!a || new Date(b.startedAt) > new Date(a.startedAt) ? b : a), null);
     return {
       ...s,
       startedAt: (latestRun && latestRun.startedAt) || s.startedAt,
@@ -610,10 +655,10 @@
   const ALL_TEST_BROWSERS = ["chromium", "msedge", "firefox", "webkit", "iphone", "android", "fold", "ipad", "ipadland"];
   const SETUP_MS = 75000; // durata tipica della preparazione dei browser su GitHub
   const PUBLISH_MS = 30000; // durata tipica della pubblicazione dei risultati
-  const live = { seen: {}, allDoneAt: null, shown: 0, target: 0, startedAt: 0, since: 0, lastFrame: 0 };
 
   // "since": l'esecuzione da seguire è quella creata dopo questo istante (non quella precedente, già finita).
-  function resetLive(since) {
+  function resetLive(c, since) {
+    const live = c.live;
     live.seen = {};
     live.allDoneAt = null;
     live.shown = 0;
@@ -623,7 +668,7 @@
   }
 
   // L'esecuzione nello stato è quella che stiamo seguendo?
-  const isFollowedRun = (run) => run && new Date(run.createdAt).getTime() >= live.since;
+  const isFollowedRun = (c, run) => run && new Date(run.createdAt).getTime() >= c.live.since;
 
   // Varianti coinvolte nell'esecuzione, dal titolo (es. "E2E · website · safari"); altrimenti tutte.
   function runBrowsers(run) {
@@ -632,12 +677,16 @@
     if (m[1] === "desktop") return Object.values(SECTIONS.desktop.families).flat();
     if (m[1] === "mobile") return ["iphone", "android", "ipad", "ipadland"]; // il Fold solo in automatico
     if (m[1] === "ipad") return SECTIONS.mobile.families.ipad;
+    if (m[1] === "security") return ["chromium"];
     return ALL_TEST_BROWSERS.includes(m[1]) ? [m[1]] : ALL_TEST_BROWSERS;
   }
 
+  // Avanzamento della partita del campetto aperto (null se non ce n'è una da seguire).
   function liveInfo() {
-    const st = state.status;
-    if (!state.following || !st || !isFollowedRun(st.run) || !state.summary) return null;
+    const c = C();
+    const live = c.live;
+    const st = courtStatus(currentArea());
+    if (!c.following || !st || !isFollowedRun(c, st.run) || !state.summary) return null;
     const browsers = runBrowsers(st.run);
     const progress = st.progress || {};
     const tests = state.summary.tests.filter((t) => t.key && inSection(t)); // solo i controlli della sezione aperta
@@ -673,8 +722,10 @@
 
   // Percentuale "vera" verso cui la barra si muove.
   function liveTarget(info) {
+    const c = C();
+    const live = c.live;
     const now = Date.now();
-    if (state.phase === "refreshing") return 100; // esecuzione finita, risultati in arrivo
+    if (c.phase === "refreshing") return 100; // esecuzione finita, risultati in arrivo
     if (!info || info.done + info.current.length === 0) {
       // Richiesta inviata e preparazione dei browser: 2% → 14% nel tempo tipico.
       return Math.min(14, 2 + ((now - live.startedAt) / SETUP_MS) * 12);
@@ -688,9 +739,10 @@
   }
 
   function livePhaseText(info) {
-    if (state.phase === "starting") return T.live.starting;
-    if (state.phase === "refreshing") return T.live.publish;
-    if (state.waiting) return T.waiting;
+    const c = C();
+    if (c.phase === "starting") return T.live.starting;
+    if (c.phase === "refreshing") return T.live.publish;
+    if (c.waiting) return T.waiting;
     if (!info || info.done + info.current.length === 0) return T.live.setup;
     if (info.done >= info.total) return T.live.publish;
     // L'esecuzione riguarda solo l'altra sezione: niente conteggio dei controlli di questa.
@@ -699,7 +751,9 @@
   }
 
   function renderLiveProgress() {
-    if (state.phase === "idle") return "";
+    const c = C();
+    const live = c.live;
+    if (c.phase === "idle") return "";
     const info = liveInfo();
     const pct = Math.round(live.shown);
     const now = info && info.current.length
@@ -720,8 +774,11 @@
   }
 
   // Animazione continua: a ogni passo la barra si avvicina al valore vero, senza mai tornare indietro.
+  // Anima la barra del campetto aperto; quella dell'altro riparte dal valore vero quando lo si riapre.
   function tick() {
-    if (state.phase === "idle") return;
+    const c = C();
+    const live = c.live;
+    if (c.phase === "idle") return;
     const info = liveInfo();
     live.target = Math.max(live.target, liveTarget(info));
     const now = Date.now();
@@ -753,7 +810,7 @@
   requestAnimationFrame(animate);
   // Riserva: se il browser sospende requestAnimationFrame, un timer aggiorna comunque la barra.
   setInterval(() => {
-    if (Date.now() - live.lastFrame > 500) tick();
+    if (Date.now() - C().live.lastFrame > 500) tick();
   }, 250);
 
   // Stato in diretta di un controllo su un browser (e le sue varianti):
@@ -810,9 +867,37 @@
     };
   }
 
-  // Scelta della sezione: computer oppure smartphone e tablet.
+  // Primo livello: Funzionalità oppure Sicurezza.
+  function renderAreas() {
+    return `<div class="qlp-areas" role="group" aria-label="${esc(T.areasLabel)}">${AREAS.map(
+      (area) =>
+        `<button type="button" class="qlp-area" data-area="${area}" aria-pressed="${currentArea() === area}">${esc(T.areas[area])}</button>`,
+    ).join("")}</div>`;
+  }
+
+  // Indirizzo della scheda Sicurezza, da condividere (es. mattiazanchin.com/playground/#sicurezza).
+  const SECURITY_HASH = LANG === "en" ? "#security" : "#sicurezza";
+  const isSecurityHash = () => /^#(sicurezza|security)$/i.test(location.hash);
+
+  function openArea(area) {
+    if (area === currentArea()) return;
+    if (area === "security") {
+      state.lastFunctionalSection = state.section;
+      setSection("security");
+    } else {
+      setSection(state.lastFunctionalSection);
+    }
+    state.view = "all";
+    // L'indirizzo segue la scheda, senza aggiungere voci alla cronologia del browser.
+    history.replaceState(null, "", area === "security" ? SECURITY_HASH : location.pathname + location.search);
+    track("playground_tab", { area, section: area === "security" ? "security" : state.section });
+    render();
+  }
+
+  // Secondo livello (solo in Funzionalità): computer oppure smartphone e tablet.
   function renderSections() {
-    return `<div class="qlp-sections" role="group" aria-label="${esc(T.sectionsLabel)}">${Object.keys(SECTIONS)
+    if (isSecuritySection()) return "";
+    return `<div class="qlp-sections" role="group" aria-label="${esc(T.sectionsLabel)}">${["desktop", "mobile"]
       .map(
         (key) =>
           `<button type="button" class="qlp-section" data-section="${key}" aria-pressed="${state.section === key}">${esc(T.sections[key])}</button>`,
@@ -939,7 +1024,8 @@
       : `<p class="qlp-empty">${esc(T.noResults)}</p>`;
 
     root.innerHTML = `
-      <div class="qlp-card ${state.justUpdated ? "qlp-updated" : ""}">
+      <div class="qlp-card ${C().justUpdated ? "qlp-updated" : ""}">
+        ${renderAreas()}
         ${renderSections()}
         ${renderTabs(s)}
         <div class="qlp-actions">
@@ -955,7 +1041,7 @@
               : ""
         }
         ${renderLiveProgress()}
-        ${state.message ? `<p class="qlp-message qlp-message-${state.messageKind}" role="status">${esc(state.message)}</p>` : renderCourtNote()}
+        ${C().message ? `<p class="qlp-message qlp-message-${C().messageKind}" role="status">${esc(C().message)}</p>` : renderCourtNote()}
         ${body}
       </div>`;
 
@@ -964,7 +1050,7 @@
     const whyLink = root.querySelector(".qlp-why-link");
     if (whyLink)
       whyLink.addEventListener("click", () => {
-        state.showWhy = !state.showWhy;
+        C().showWhy = !C().showWhy;
         render();
       });
     const how = root.querySelector(".qlp-how-link");
@@ -975,11 +1061,15 @@
         render();
       }),
     );
+    root.querySelectorAll(".qlp-area").forEach((b) =>
+      b.addEventListener("click", () => openArea(b.dataset.area)),
+    );
     root.querySelectorAll(".qlp-section").forEach((b) =>
       b.addEventListener("click", () => {
         if (b.dataset.section === state.section) return;
         setSection(b.dataset.section);
         state.view = "all";
+        track("playground_tab", { area: "functional", section: b.dataset.section });
         render();
       }),
     );
@@ -993,14 +1083,16 @@
 
   // Pausa di 10 minuti tra una partita e l'altra (limite del plugin): spieghiamo perché il pulsante aspetta.
   function renderCourtNote() {
-    const st = state.status;
-    if (state.phase !== "idle" || !st || !st.configured || !(st.cooldownRemaining > 0)) return "";
+    const st = courtStatus(currentArea());
+    if (C().phase !== "idle" || !st || !st.configured || !(st.cooldownRemaining > 0)) return "";
     if (st.run && st.run.status !== "completed") return "";
     return `<p class="qlp-message qlp-message-info" role="status">${esc(T.courtCleaning(Math.ceil(st.cooldownRemaining / 60)))}</p>`;
   }
 
   function renderButton() {
-    const st = state.status;
+    const c = C();
+    const area = currentArea();
+    const st = courtStatus(area);
     let label = state.view === "all" ? T.runNow : T.runOn(BROWSER_NAMES[state.view]);
     let disabled = false;
     let why = ""; // spiegazione nel tooltip quando il pulsante aspetta
@@ -1010,26 +1102,26 @@
     } else if (!RUN_KEY[state.view]) {
       label = T.autoOnly; // es. Galaxy Fold: solo nelle esecuzioni automatiche
       disabled = true;
-    } else if (state.phase !== "idle" || (st.run && st.run.status !== "completed")) {
+    } else if (c.phase !== "idle" || (st.run && st.run.status !== "completed")) {
       label = T.running;
       disabled = true;
-      why = T.whyBusy;
+      why = T.whyBusy(GAME_MINUTES[area]);
     } else if (st.cooldownRemaining > 0) {
       label = T.availableIn(Math.ceil(st.cooldownRemaining / 60));
       disabled = true;
-      why = T.whyCleaning;
+      why = T.whyCleaning(Math.round((st.cooldown || 600) / 60));
     }
     const button = `<button type="button" class="qlp-run" ${disabled ? "disabled" : ""}>${esc(label)}</button>`;
     if (!why) {
-      state.showWhy = false; // il campetto è libero: la prossima volta la spiegazione riparte chiusa
+      c.showWhy = false; // il campetto è libero: la prossima volta la spiegazione riparte chiusa
       return button;
     }
     // Un pulsante disattivato non mostra il tooltip in tutti i browser: lo mettiamo sul contenitore.
     // Il tooltip però si vede solo con il mouse: accanto c'è un link visibile anche su telefono,
     // che apre la spiegazione sotto il pulsante.
     return `<span class="qlp-run-wrap" title="${esc(why)}">${button}</span>
-      <button type="button" class="qlp-why-link" aria-expanded="${state.showWhy}" aria-controls="qlp-why">ⓘ ${esc(T.whyLink)}</button>
-      ${state.showWhy ? `<p id="qlp-why" class="qlp-why">${esc(why)}</p>` : ""}`;
+      <button type="button" class="qlp-why-link" aria-expanded="${c.showWhy}" aria-controls="qlp-why">ⓘ ${esc(T.whyLink)}</button>
+      ${c.showWhy ? `<p id="qlp-why" class="qlp-why">${esc(why)}</p>` : ""}`;
   }
 
 
@@ -1037,97 +1129,116 @@
   /* ---------- Avvio e attesa dei test ---------- */
 
   async function startRun() {
-    resetLive(Date.now() - 10000);
-    state.phase = "starting";
-    state.message = null;
-    state.justUpdated = false;
+    const area = currentArea();
+    const c = courts[area];
+    resetLive(c, Date.now() - 10000);
+    c.phase = "starting";
+    c.message = null;
+    c.justUpdated = false;
     render();
 
-    // Avvia i controlli sulla scheda selezionata ("all" = tutta la sezione: computer o dispositivi).
+    // Avvia i controlli sulla scheda selezionata ("all" = tutta la sezione: computer o dispositivi;
+    // nel campetto Sicurezza, i controlli di sicurezza).
+    const target = RUN_KEY[state.view];
+    track("playground_run", { area, target });
     const res = await getJson(cfg.runUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ browser: RUN_KEY[state.view] }),
+      body: JSON.stringify({ browser: target }),
     });
     const body = res.body || {};
 
     if (res.status === 202) {
-      return follow(new Date(body.startedAt).getTime() - 10000);
+      return follow(area, new Date(body.startedAt).getTime() - 10000);
     }
     if (body.reason === "running") {
       // Il pulsante era ancora visibile, ma c'era già un'esecuzione: avvisiamo e la seguiamo.
-      state.message = T.msgFollowing;
-      state.messageKind = "warning";
-      return follow(new Date(body.run.createdAt).getTime() - 1000);
+      c.message = T.msgFollowing;
+      c.messageKind = "warning";
+      return follow(area, new Date(body.run.createdAt).getTime() - 1000);
     }
 
-    state.phase = "idle";
-    state.messageKind = "warning";
-    state.message = body.reason === "cooldown" ? T.msgCooldown(Math.ceil(body.cooldownRemaining / 60)) : T.msgError;
+    c.phase = "idle";
+    c.messageKind = "warning";
+    c.message = body.reason === "cooldown" ? T.msgCooldown(Math.ceil(body.cooldownRemaining / 60)) : T.msgError;
     state.status = await loadStatus();
     render();
   }
 
-  // Segue l'esecuzione creata dopo "since" finché non termina, poi ricarica i risultati.
-  async function follow(since) {
-    if (state.following) return; // la stiamo già seguendo
-    state.following = true;
-    if (state.phase !== "starting") resetLive(since); // dopo un clic è già stato azzerato in startRun
-    live.since = since;
+  // Segue l'esecuzione di un campetto creata dopo "since" finché non termina, poi ricarica i risultati.
+  // I due campetti si seguono in modo indipendente: la pagina mostra quello aperto.
+  async function follow(area, since) {
+    const c = courts[area];
+    if (c.following) return; // la stiamo già seguendo
+    c.following = true;
+    if (c.phase !== "starting") resetLive(c, since); // dopo un clic è già stato azzerato in startRun
+    c.live.since = since;
     const deadline = Date.now() + MAX_WAIT_MS;
-    state.phase = "queued";
+    c.phase = "queued";
     render();
 
     while (Date.now() < deadline) {
       await new Promise((r) => setTimeout(r, POLL_MS));
       state.status = await loadStatus().catch(() => state.status);
-      const run = state.status && state.status.run;
+      const st = courtStatus(area);
+      const run = st && st.run;
       if (!run || new Date(run.createdAt).getTime() < since) continue; // GitHub non la mostra ancora
 
       if (run.status === "completed") {
-        state.phase = "refreshing";
-        state.waiting = false;
+        c.phase = "refreshing";
+        c.waiting = false;
         render();
-        await refreshSummary(run);
-        state.following = false;
+        await refreshSummary(area, run);
+        c.following = false;
         return;
       }
-      state.phase = run.status === "in_progress" ? "in_progress" : "queued";
-      // In coda dietro un'altra esecuzione (GitHub ne esegue una alla volta).
-      state.waiting = state.phase === "queued" && (run.activeRuns || 1) > 1;
+      c.phase = run.status === "in_progress" ? "in_progress" : "queued";
+      // In coda dietro un'altra esecuzione dello stesso campetto (GitHub ne esegue una alla volta).
+      c.waiting = c.phase === "queued" && (run.activeRuns || 1) > 1;
       render();
     }
 
-    state.phase = "idle";
-    state.following = false;
-    state.waiting = false;
-    state.messageKind = "warning";
-    state.message = T.msgSlow;
+    c.phase = "idle";
+    c.following = false;
+    c.waiting = false;
+    c.messageKind = "warning";
+    c.message = T.msgSlow;
     render();
   }
 
+  // Il riepilogo contiene i risultati di un'esecuzione? (dell'ultima pubblicata, di un browser o della sicurezza:
+  // con due campetti, un'altra partita può essere pubblicata subito dopo la nostra)
+  function summaryHasRun(s, runId) {
+    const urls = [s.runUrl, s.securityRun && s.securityRun.runUrl, ...Object.values(s.runs || {}).map((r) => r.runUrl)];
+    return urls.some((u) => u && u.endsWith("/" + runId));
+  }
+
   // Il riepilogo su GitHub Pages può arrivare qualche secondo dopo la fine dell'esecuzione.
-  async function refreshSummary(run) {
+  async function refreshSummary(area, run) {
+    const c = courts[area];
     const runId = String(run.id);
     for (let i = 0; i < 12; i++) {
       const s = await loadSummary().catch(() => null);
-      if (s && s.runUrl && s.runUrl.endsWith("/" + runId)) {
+      if (s && summaryHasRun(s, runId)) {
         state.summary = s;
         break;
       }
       await new Promise((r) => setTimeout(r, POLL_MS));
     }
-    // Lasciamo vedere la barra arrivare al 100% prima di mostrare i risultati.
-    live.target = 100;
-    await new Promise((resolve) => {
-      const giveUp = Date.now() + 4000;
-      const wait = () => (live.shown >= 99.5 || Date.now() > giveUp ? setTimeout(resolve, 700) : requestAnimationFrame(wait));
-      wait();
-    });
-    state.phase = "idle";
-    state.justUpdated = true;
-    state.messageKind = "info";
-    state.message = run.conclusion === "success" ? T.msgDone : T.msgDoneKo;
+    // Lasciamo vedere la barra arrivare al 100% prima di mostrare i risultati
+    // (se il campetto non è aperto, nessuno la sta guardando: niente attesa).
+    c.live.target = 100;
+    if (area === currentArea()) {
+      await new Promise((resolve) => {
+        const giveUp = Date.now() + 4000;
+        const wait = () => (c.live.shown >= 99.5 || Date.now() > giveUp ? setTimeout(resolve, 700) : requestAnimationFrame(wait));
+        wait();
+      });
+    }
+    c.phase = "idle";
+    c.justUpdated = true;
+    c.messageKind = "info";
+    c.message = run.conclusion === "success" ? T.msgDone : T.msgDoneKo;
     state.status = await loadStatus().catch(() => state.status);
     render();
   }
@@ -1137,6 +1248,7 @@
   (async function init() {
     const [section, view] = detectDevice();
     setSection(section);
+    state.lastFunctionalSection = section;
     state.view = view;
     const [summary, status] = await Promise.all([loadSummary().catch(() => null), loadStatus().catch(() => null)]);
     state.summary = summary;
@@ -1145,34 +1257,45 @@
     const grouped = groupByBrowser(summary);
     if (state.section === "mobile" && !(grouped && grouped.browsers && grouped.browsers.length)) {
       setSection("desktop");
+      state.lastFunctionalSection = "desktop";
+      state.view = "all";
+    }
+    // Link diretto alla scheda Sicurezza (es. /playground/#sicurezza).
+    if (isSecurityHash()) {
+      setSection("security");
       state.view = "all";
     }
     render();
 
-    // Se un'esecuzione è già in corso quando la pagina si apre, la seguiamo.
-    if (status && status.run && status.run.status !== "completed") {
-      // Qualcun altro sta già giocando: lo diciamo e seguiamo la partita in diretta.
-      state.message = T.courtBusy;
-      state.messageKind = "info";
-      follow(new Date(status.run.createdAt).getTime() - 1000);
+    // Se su un campetto c'è già una partita quando la pagina si apre, la seguiamo.
+    // Qualcun altro sta già giocando: lo diciamo e seguiamo la partita in diretta.
+    function followIfBusy(area) {
+      const c = courts[area];
+      const st = courtStatus(area);
+      if (c.following || c.phase !== "idle" || !st || !st.run || st.run.status === "completed") return false;
+      c.message = T.courtBusy;
+      c.messageKind = "info";
+      follow(area, new Date(st.run.createdAt).getTime() - 1000);
+      return true;
     }
+    AREAS.forEach(followIfBusy);
 
     // Mentre la pagina è aperta controlliamo ogni 30 secondi (e quando si torna sulla scheda del browser):
-    // se nel frattempo è partita un'esecuzione, il pulsante si blocca e la pagina la segue.
+    // se nel frattempo è partita un'esecuzione su un campetto, il suo pulsante si blocca e la pagina la segue.
     async function checkForNewRun() {
-      if (state.following || state.phase !== "idle" || document.visibilityState !== "visible") return;
+      if (document.visibilityState !== "visible") return;
+      if (AREAS.every((area) => courts[area].following || courts[area].phase !== "idle")) return;
       const st = await loadStatus().catch(() => null);
       if (!st) return;
       state.status = st;
-      if (st.run && st.run.status !== "completed") {
-        state.message = T.courtBusy;
-        state.messageKind = "info";
-        follow(new Date(st.run.createdAt).getTime() - 1000);
-      } else {
-        render(); // aggiorna il pulsante (es. il conto alla rovescia "Disponibile tra N min")
-      }
+      const started = AREAS.map(followIfBusy).some(Boolean);
+      if (!started) render(); // aggiorna i pulsanti (es. il conto alla rovescia "Libero tra N min")
     }
     setInterval(checkForNewRun, 30000);
     document.addEventListener("visibilitychange", checkForNewRun);
+    // Link alla scheda Sicurezza aperto mentre la pagina è già caricata.
+    window.addEventListener("hashchange", () => {
+      if (isSecurityHash() && !isSecuritySection()) openArea("security");
+    });
   })();
 })();

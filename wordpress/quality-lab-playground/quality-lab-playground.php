@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Quality Lab Playground
  * Description: Mostra i risultati dei test E2E del sito e permette ai visitatori di avviarli. Shortcode: [quality_lab_playground]
- * Version:     1.11.0
+ * Version:     1.12.0
  * Author:      Mattia Zanchin
  * License:     MIT
  *
@@ -13,13 +13,18 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const QLP_VERSION     = '1.11.0';
+const QLP_VERSION     = '1.12.0';
 const QLP_REPO        = 'MattiaZanchin94/website-quality-lab';
 const QLP_WORKFLOW    = 'e2e-tests.yml';
 const QLP_PAGES_URL   = 'https://mattiazanchin94.github.io/website-quality-lab';
-const QLP_COOLDOWN    = 10 * MINUTE_IN_SECONDS; // al massimo un avvio ogni 10 minuti, per tutto il sito
+// Due campetti indipendenti, ognuno con la sua pausa tra un avvio e l'altro (uguale per tutti i visitatori):
+// Funzionalità (computer e dispositivi, 3-5 minuti di partita) e Sicurezza (un minuto circa).
+const QLP_COOLDOWNS   = array(
+	'functional' => 10 * MINUTE_IN_SECONDS,
+	'security'   => 5 * MINUTE_IN_SECONDS,
+);
 const QLP_STATUS_TTL  = 10;                      // secondi di cache dello stato, per non interrogare GitHub a ogni visita
-const QLP_BROWSERS    = array( 'all', 'desktop', 'mobile', 'chromium', 'msedge', 'firefox', 'webkit', 'iphone', 'android', 'ipad' ); // valori ammessi per l'avvio (il Galaxy Fold gira solo in automatico)
+const QLP_BROWSERS    = array( 'all', 'desktop', 'mobile', 'chromium', 'msedge', 'firefox', 'webkit', 'iphone', 'android', 'ipad', 'security' ); // valori ammessi per l'avvio (il Galaxy Fold gira solo in automatico)
 const QLP_TEST_BROWSERS = array( 'chromium', 'msedge', 'firefox', 'webkit', 'iphone', 'android', 'fold', 'ipad', 'ipadland' );
 const QLP_PROGRESS_TTL  = 2 * HOUR_IN_SECONDS; // l'avanzamento di un'esecuzione resta disponibile per 2 ore
 
@@ -50,36 +55,64 @@ function qlp_github_request( string $method, string $path, ?array $body = null )
 	return wp_remote_request( 'https://api.github.com/repos/' . QLP_REPO . $path, $args );
 }
 
-/** Ultima esecuzione del workflow (più quante sono ancora attive), ridotta ai campi che servono alla pagina. */
-function qlp_latest_run(): ?array {
-	$cached = get_transient( 'qlp_latest_run' );
-	if ( false !== $cached ) {
-		return $cached ?: null;
+/** Campetto di un valore di avvio: "security" ha il suo, tutti gli altri giocano su Funzionalità. */
+function qlp_area_of( string $browser ): string {
+	return 'security' === $browser ? 'security' : 'functional';
+}
+
+/**
+ * Campetto di un'esecuzione, dal suo titolo (es. "E2E · website · security").
+ * Le esecuzioni orarie e dopo un push verificano tutto, ma occupano il campetto Funzionalità:
+ * le partite di sicurezza hanno una coda separata su GitHub e possono giocare in parallelo.
+ */
+function qlp_area_of_run( array $run ): string {
+	return preg_match( '/·\s*security\s*$/u', (string) $run['display_title'] ) ? 'security' : 'functional';
+}
+
+/**
+ * Ultima esecuzione di ciascun campetto (più quante sono ancora attive), ridotta ai campi che servono alla pagina:
+ * array( 'functional' => array|null, 'security' => array|null ).
+ */
+function qlp_latest_runs(): array {
+	$cached = get_transient( 'qlp_latest_runs' );
+	if ( is_array( $cached ) ) {
+		return $cached;
 	}
 
-	$response = qlp_github_request( 'GET', '/actions/workflows/' . QLP_WORKFLOW . '/runs?per_page=5' );
+	$out      = array( 'functional' => null, 'security' => null );
+	$response = qlp_github_request( 'GET', '/actions/workflows/' . QLP_WORKFLOW . '/runs?per_page=20' );
 	if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
-		return null;
+		return $out;
 	}
 
 	$data = json_decode( wp_remote_retrieve_body( $response ), true );
-	$runs = $data['workflow_runs'] ?? array();
-	$run  = $runs[0] ?? null;
-	// Esecuzioni non ancora finite (in corso o in coda): se sono più di una, l'ultima aspetta in coda.
-	$active = count( array_filter( $runs, function ( $r ) { return 'completed' !== $r['status']; } ) );
-	$out  = $run ? array(
-		'id'         => $run['id'],
-		'status'     => $run['status'],      // queued | in_progress | completed
-		'conclusion' => $run['conclusion'],  // success | failure | null
-		'title'      => $run['display_title'],
-		'createdAt'  => $run['created_at'],
-		'updatedAt'  => $run['updated_at'],
-		'url'        => $run['html_url'],
-		'activeRuns' => $active,
-	) : array();
+	foreach ( array_keys( $out ) as $area ) {
+		$runs = array_values(
+			array_filter(
+				$data['workflow_runs'] ?? array(),
+				function ( $r ) use ( $area ) { return qlp_area_of_run( $r ) === $area; }
+			)
+		);
+		$run = $runs[0] ?? null; // GitHub le restituisce dalla più recente
+		if ( ! $run ) {
+			continue;
+		}
+		// Esecuzioni non ancora finite (in corso o in coda): se sono più di una, l'ultima aspetta in coda.
+		$active       = count( array_filter( $runs, function ( $r ) { return 'completed' !== $r['status']; } ) );
+		$out[ $area ] = array(
+			'id'         => $run['id'],
+			'status'     => $run['status'],      // queued | in_progress | completed
+			'conclusion' => $run['conclusion'],  // success | failure | null
+			'title'      => $run['display_title'],
+			'createdAt'  => $run['created_at'],
+			'updatedAt'  => $run['updated_at'],
+			'url'        => $run['html_url'],
+			'activeRuns' => $active,
+		);
+	}
 
-	set_transient( 'qlp_latest_run', $out, QLP_STATUS_TTL );
-	return $out ?: null;
+	set_transient( 'qlp_latest_runs', $out, QLP_STATUS_TTL );
+	return $out;
 }
 
 /* -------------------------------------------------------------------------
@@ -142,9 +175,14 @@ function qlp_progress_for_run( $run_id ): array {
 	return $out;
 }
 
-function qlp_cooldown_remaining(): int {
-	$last = (int) get_transient( 'qlp_last_dispatch' );
-	return $last ? max( 0, QLP_COOLDOWN - ( time() - $last ) ) : 0;
+/** Nome del dato temporaneo con l'ora dell'ultimo avvio di un campetto. */
+function qlp_dispatch_transient( string $area ): string {
+	return 'functional' === $area ? 'qlp_last_dispatch' : 'qlp_last_dispatch_' . $area;
+}
+
+function qlp_cooldown_remaining( string $area ): int {
+	$last = (int) get_transient( qlp_dispatch_transient( $area ) );
+	return $last ? max( 0, QLP_COOLDOWNS[ $area ] - ( time() - $last ) ) : 0;
 }
 
 /* -------------------------------------------------------------------------
@@ -161,15 +199,25 @@ add_action(
 				'methods'             => 'GET',
 				'permission_callback' => '__return_true',
 				'callback'            => function () {
-					$run = qlp_latest_run();
+					$courts = array();
+					foreach ( qlp_latest_runs() as $area => $run ) {
+						$courts[ $area ] = array(
+							'run'               => $run,
+							// Test per test, solo per l'esecuzione più recente (vuoto se i test non lo inviano).
+							'progress'          => $run ? qlp_progress_for_run( $run['id'] ) : new stdClass(),
+							'cooldownRemaining' => qlp_cooldown_remaining( $area ),
+							'cooldown'          => QLP_COOLDOWNS[ $area ], // durata della pausa, in secondi
+						);
+					}
 					return qlp_no_cache(
 						new WP_REST_Response(
 							array(
 								'configured'        => defined( 'QLP_GITHUB_TOKEN' ) && QLP_GITHUB_TOKEN,
-								'run'               => $run,
-								// Test per test, solo per l'esecuzione più recente (vuoto se i test non lo inviano).
-								'progress'          => $run ? qlp_progress_for_run( $run['id'] ) : new stdClass(),
-								'cooldownRemaining' => qlp_cooldown_remaining(),
+								'courts'            => $courts,
+								// Campi della versione precedente (un solo campetto), per le pagine ancora in cache.
+								'run'               => $courts['functional']['run'],
+								'progress'          => $courts['functional']['progress'],
+								'cooldownRemaining' => $courts['functional']['cooldownRemaining'],
 							)
 						)
 					);
@@ -182,7 +230,7 @@ add_action(
 			'/run',
 			array(
 				'methods'             => 'POST',
-				'permission_callback' => '__return_true', // pubblico per scelta: il limite è il cooldown globale
+				'permission_callback' => '__return_true', // pubblico per scelta: il limite è la pausa di ogni campetto
 				'callback'            => 'qlp_handle_run',
 			)
 		);
@@ -206,7 +254,8 @@ function qlp_handle_run( WP_REST_Request $request ) {
 		$browser = 'all';
 	}
 
-	$remaining = qlp_cooldown_remaining();
+	$area      = qlp_area_of( $browser );
+	$remaining = qlp_cooldown_remaining( $area );
 	if ( $remaining > 0 ) {
 		return qlp_no_cache(
 			new WP_REST_Response(
@@ -220,8 +269,8 @@ function qlp_handle_run( WP_REST_Request $request ) {
 		);
 	}
 
-	// Se un'esecuzione è già in corso non ne accodiamo un'altra: la pagina seguirà quella.
-	$run = qlp_latest_run();
+	// Se su questo campetto c'è già una partita non ne accodiamo un'altra: la pagina seguirà quella.
+	$run = qlp_latest_runs()[ $area ];
 	if ( $run && 'completed' !== $run['status'] ) {
 		return qlp_no_cache(
 			new WP_REST_Response(
@@ -236,7 +285,7 @@ function qlp_handle_run( WP_REST_Request $request ) {
 	}
 
 	// Blocchiamo subito il cooldown, prima della chiamata, per evitare doppi avvii simultanei.
-	set_transient( 'qlp_last_dispatch', time(), QLP_COOLDOWN );
+	set_transient( qlp_dispatch_transient( $area ), time(), QLP_COOLDOWNS[ $area ] );
 
 	$response = qlp_github_request(
 		'POST',
@@ -251,19 +300,20 @@ function qlp_handle_run( WP_REST_Request $request ) {
 	);
 
 	if ( is_wp_error( $response ) || 204 !== wp_remote_retrieve_response_code( $response ) ) {
-		delete_transient( 'qlp_last_dispatch' );
+		delete_transient( qlp_dispatch_transient( $area ) );
 		// Il dettaglio va solo nel log del server: al visitatore non mostriamo nulla del token o di GitHub.
 		error_log( 'Quality Lab Playground: dispatch fallito - ' . ( is_wp_error( $response ) ? $response->get_error_message() : wp_remote_retrieve_response_code( $response ) ) );
 		return qlp_no_cache( new WP_REST_Response( array( 'started' => false, 'reason' => 'error' ), 502 ) );
 	}
 
-	delete_transient( 'qlp_latest_run' ); // il prossimo /status deve vedere la nuova esecuzione
+	delete_transient( 'qlp_latest_runs' ); // il prossimo /status deve vedere la nuova esecuzione
 	return qlp_no_cache(
 		new WP_REST_Response(
 			array(
 				'started'           => true,
 				'startedAt'         => gmdate( 'c' ),
-				'cooldownRemaining' => QLP_COOLDOWN,
+				'cooldownRemaining' => QLP_COOLDOWNS[ $area ],
+				'area'              => $area,
 			),
 			202
 		)

@@ -18,6 +18,9 @@ const results = await Promise.all(
 );
 
 const label = (r, name) => r.labels?.find((l) => l.name === name)?.value ?? null;
+const browserOf = (r) => label(r, "browser") ?? "chromium";
+// [Category("Security")] in C#: i controlli di sicurezza hanno il loro "campetto" nella pagina Playground.
+const areaOf = (r) => ((r.labels ?? []).some((l) => l.name === "tag" && /^security$/i.test(l.value)) ? "security" : "functional");
 
 // Ogni controllo gira su più browser: raggruppiamo le esecuzioni per nome del controllo.
 // Tutte le configurazioni: 4 browser per computer e 5 dispositivi emulati.
@@ -56,12 +59,11 @@ for (const r of results) {
     order: Number(label(r, "order")) || null,
     // [Category("Smoke")] / [Category("Regression")] in C# diventano tag Allure.
     type: (r.labels ?? []).find((l) => l.name === "tag" && /^(smoke|regression)$/i.test(l.value))?.value.toLowerCase() ?? null,
-    // [Category("Security")]: i controlli di sicurezza hanno una sezione a parte nella pagina Playground.
-    area: (r.labels ?? []).some((l) => l.name === "tag" && /^security$/i.test(l.value)) ? "security" : "functional",
+    area: areaOf(r),
     browsers: {}, // stato per browser, es. { chromium: "passed", firefox: "failed" }
     durations: {}, // durata in ms per browser
   };
-  const browser = label(r, "browser") ?? "chromium";
+  const browser = browserOf(r);
   t.browsers[browser] = r.status;
   t.durations[browser] = r.stop - r.start;
   byKey.set(id, t);
@@ -84,28 +86,42 @@ const runInfo = (rs) => ({
   commit: env.GITHUB_SHA?.slice(0, 7) ?? null,
   runUrl,
 });
-const ranNow = [...new Set(results.map((r) => label(r, "browser") ?? "chromium"))];
-const runs = Object.fromEntries(ranNow.map((b) => [b, runInfo(results.filter((r) => (label(r, "browser") ?? "chromium") === b))]));
+const ranNow = [...new Set(results.map(browserOf))];
 
-// Se questo run riguarda solo alcuni browser, gli altri mantengono gli ultimi risultati pubblicati.
-const isFullRun = ALL_BROWSERS.every((b) => ranNow.includes(b));
-if (previousFile && !isFullRun) {
-  const prev = JSON.parse(await readFile(previousFile, "utf8").catch(() => "null"));
-  for (const pt of prev?.tests ?? []) {
+// Dati di esecuzione per browser (durata, avvio, chi l'ha avviata): solo dai controlli funzionali,
+// così una partita di sicurezza (un minuto su Chromium) non cambia il grafico dei browser.
+// La partita di sicurezza ha i suoi dati a parte, in "securityRun".
+const functional = results.filter((r) => areaOf(r) === "functional");
+const security = results.filter((r) => areaOf(r) === "security");
+const ranFunctional = [...new Set(functional.map(browserOf))];
+const runs = Object.fromEntries(ranFunctional.map((b) => [b, runInfo(functional.filter((r) => browserOf(r) === b))]));
+let securityRun = security.length ? runInfo(security) : null;
+
+// Questo run ha coperto alcune combinazioni campetto + browser (es. "functional|iphone" o "security|chromium").
+// Per tutte le altre teniamo gli ultimi risultati pubblicati: così una partita solo su iPhone,
+// o solo di sicurezza, non cancella i risultati degli altri browser e dell'altro campetto.
+const covered = new Set(results.map((r) => `${areaOf(r)}|${browserOf(r)}`));
+const prev = previousFile ? JSON.parse(await readFile(previousFile, "utf8").catch(() => "null")) : null;
+if (prev) {
+  for (const pt of prev.tests ?? []) {
+    const area = pt.area ?? "functional"; // i summary vecchi non hanno "area"
     for (const [b, status] of Object.entries(pt.browsers ?? {})) {
-      if (ranNow.includes(b) || !ALL_BROWSERS.includes(b)) continue;
+      if (covered.has(`${area}|${b}`) || !ALL_BROWSERS.includes(b)) continue;
       const id = pt.key ?? pt.title;
-      const t = byKey.get(id) ?? { ...pt, browsers: {}, durations: {} };
+      const t = byKey.get(id) ?? { ...pt, area, browsers: {}, durations: {} };
       t.browsers[b] = status;
       t.durations[b] = pt.durations?.[b] ?? pt.durationMs ?? 0;
       byKey.set(id, t);
     }
   }
-  for (const b of prev?.browsers ?? []) {
-    if (ranNow.includes(b) || !ALL_BROWSERS.includes(b)) continue;
+  for (const b of prev.browsers ?? []) {
+    if (ranFunctional.includes(b) || !ALL_BROWSERS.includes(b)) continue;
     // I summary vecchi non hanno "runs": usiamo i dati generali di quel run.
-    runs[b] = prev.runs?.[b] ?? { startedAt: prev.startedAt, durationMs: prev.durationMs, trigger: prev.trigger, commit: prev.commit, runUrl: prev.runUrl };
+    if (prev.runs?.[b] || !prev.runs) {
+      runs[b] = prev.runs?.[b] ?? { startedAt: prev.startedAt, durationMs: prev.durationMs, trigger: prev.trigger, commit: prev.commit, runUrl: prev.runUrl };
+    }
   }
+  securityRun ??= prev.securityRun ?? null;
 }
 
 // Stato e durata complessivi di ogni controllo: il peggiore e il più lento tra i browser.
@@ -160,7 +176,10 @@ const summary = {
   ranNow, // i browser eseguiti in quest'ultimo run
   // I browser girano in parallelo, ognuno sulla sua macchina: i test durano quanto il più lento
   // tra quelli eseguiti in quest'ultimo run (i risultati conservati da run precedenti non contano).
-  ...slowest(Object.fromEntries(ranNow.map((b) => [b, runs[b]]))),
+  // Una partita solo di sicurezza non ha browser "funzionali": teniamo il dato precedente.
+  ...(ranFunctional.length
+    ? slowest(Object.fromEntries(ranFunctional.map((b) => [b, runs[b]])))
+    : { slowestBrowser: prev?.slowestBrowser ?? null, slowestDurationMs: prev?.slowestDurationMs ?? 0 }),
   // Dati dell'ultimo run (per tutti i browser vedi "runs").
   startedAt: current.startedAt,
   durationMs: current.durationMs,
@@ -169,6 +188,7 @@ const summary = {
   commit: current.commit,
   runUrl,
   runs,
+  securityRun, // ultima partita del campetto Sicurezza (avvio, durata, chi l'ha avviata)
   tests,
 };
 

@@ -22,16 +22,18 @@ on:
         type: choice
         required: false
         default: all
-        options: [all, desktop, mobile, chromium, msedge, firefox, webkit, iphone, android, ipad, fold]
+        options: [all, desktop, mobile, chromium, msedge, firefox, webkit, iphone, android, ipad, fold, security]
       test_alert:
         description: "Manda un messaggio di prova su Telegram (per verificare la configurazione degli avvisi)"
         type: boolean
         required: false
         default: false
 
-# Mai due esecuzioni in parallelo: una nuova richiesta aspetta che finisca quella in corso.
+# Due "campetti" con la loro coda: Funzionalità (tutto il resto) e Sicurezza (browser = security).
+# Nello stesso campetto una nuova richiesta aspetta che finisca quella in corso;
+# una partita di sicurezza invece può giocare insieme a una di funzionalità.
 concurrency:
-  group: e2e-tests
+  group: e2e-${{ inputs.browser == 'security' && 'security' || 'functional' }}
   cancel-in-progress: false
 
 permissions:
@@ -55,7 +57,7 @@ jobs:
     strategy:
       fail-fast: false # se un browser fallisce, gli altri continuano
       matrix:
-        browser: ${{ fromJSON(inputs.browser == 'desktop' && '["chromium","msedge","firefox","webkit"]' || inputs.browser == 'mobile' && '["iphone","android","ipad","ipadland"]' || inputs.browser == 'ipad' && '["ipad","ipadland"]' || (inputs.browser && inputs.browser != 'all') && format('["{0}"]', inputs.browser) || '["chromium","msedge","firefox","webkit","iphone","android","ipad","ipadland","fold"]') }}
+        browser: ${{ fromJSON(inputs.browser == 'security' && '["chromium"]' || inputs.browser == 'desktop' && '["chromium","msedge","firefox","webkit"]' || inputs.browser == 'mobile' && '["iphone","android","ipad","ipadland"]' || inputs.browser == 'ipad' && '["ipad","ipadland"]' || (inputs.browser && inputs.browser != 'all') && format('["{0}"]', inputs.browser) || '["chromium","msedge","firefox","webkit","iphone","android","ipad","ipadland","fold"]') }}
     env:
       # Motore di Playwright per ogni voce della matrice:
       #   Edge è Chromium con il channel "msedge"; Android e Galaxy Fold sono Chromium emulato;
@@ -66,7 +68,10 @@ jobs:
       QLP_DEVICE: ${{ contains(fromJSON('["iphone","android","ipad","fold","ipadland"]'), matrix.browser) && matrix.browser || '' }}
       # I controlli di sicurezza (header, redirect, certificato) danno lo stesso risultato con
       # qualsiasi browser: girano solo su Chromium, invece di ripetere le stesse richieste 9 volte.
-      TEST_FILTER: ${{ matrix.browser != 'chromium' && '--filter TestCategory!=Security' || '' }}
+      #   - partita di sicurezza (browser = security): solo i controlli di sicurezza;
+      #   - partita di funzionalità avviata dal sito: nessun controllo di sicurezza (hanno il loro campetto);
+      #   - esecuzioni orarie, push e avvii manuali: tutto, con la sicurezza solo su Chromium.
+      TEST_FILTER: ${{ inputs.browser == 'security' && '--filter TestCategory=Security' || (inputs.source == 'website' || matrix.browser != 'chromium') && '--filter TestCategory!=Security' || '' }}
       HOME: /root
 
     steps:
@@ -136,6 +141,11 @@ jobs:
   # 2) Unisce i risultati dei browser, genera i report e pubblica i dati per il sito.
   publish:
     needs: test
+    # Le pubblicazioni vanno in fila indiana, anche quando due campetti giocano insieme: ognuna parte
+    # dal summary.json precedente, e due in parallelo si cancellerebbero i risultati a vicenda.
+    concurrency:
+      group: e2e-publish
+      cancel-in-progress: false
     # always(): pubblichiamo anche quando un test fallisce o un browser va in timeout;
     # per un browser mancante summary.mjs tiene i risultati dell'esecuzione precedente.
     if: ${{ always() }}
