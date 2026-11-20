@@ -78,6 +78,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      # Il codice dei test di sicurezza vive in un repository PRIVATO
+      # (website-quality-lab-security): non è pubblico. Prima della build lo
+      # recuperiamo e lo copiamo in Tests/, così l'assembly compilato e la pagina
+      # Playground restano identici a prima. Serve il secret SECURITY_REPO_TOKEN,
+      # un token di sola lettura sul repo privato.
+      # continue-on-error: se il token manca o il checkout fallisce, i test
+      # funzionali girano comunque; mancano solo i controlli di sicurezza.
+      - name: Checkout test di sicurezza (repo privato)
+        id: security_checkout
+        continue-on-error: true
+        uses: actions/checkout@v5
+        with:
+          repository: MattiaZanchin94/website-quality-lab-security
+          token: ${{ secrets.SECURITY_REPO_TOKEN }}
+          path: .security-tests
+
+      - name: Inietta i test di sicurezza
+        run: |
+          if [ -f .security-tests/Tests/SecurityTests.cs ]; then
+            cp .security-tests/Tests/SecurityTests.cs Tests/SecurityTests.cs
+            echo "Test di sicurezza iniettati da website-quality-lab-security."
+          else
+            echo "::warning::Repo privato dei test di sicurezza non disponibile (secret SECURITY_REPO_TOKEN mancante o checkout fallito). Procedo senza i controlli di sicurezza."
+          fi
+
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v5
         with:

@@ -487,3 +487,9 @@ allure-report/
 allure-results/
 history.jsonl
 dist/
+
+# Test di sicurezza: il codice vive nel repo PRIVATO website-quality-lab-security.
+# In CI viene iniettato a build-time (vedi e2e-tests.yml); in locale va copiato a mano.
+# Non deve essere ricommittato in questo repo pubblico.
+Tests/SecurityTests.cs
+.security-tests/
