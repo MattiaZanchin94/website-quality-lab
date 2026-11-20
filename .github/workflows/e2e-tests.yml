@@ -81,9 +81,10 @@ jobs:
       # Il codice dei test di sicurezza vive in un repository PRIVATO
       # (website-quality-lab-security): non è pubblico. Prima della build lo
       # recuperiamo e lo copiamo in Tests/, così l'assembly compilato e la pagina
-      # Playground restano identici a prima. Serve il secret SECURITY_REPO_TOKEN,
-      # un token di sola lettura sul repo privato.
-      # continue-on-error: se il token manca o il checkout fallisce, i test
+      # Playground restano identici a prima. L'accesso usa una deploy key di sola
+      # lettura sul repo privato, salvata nel secret SECURITY_REPO_DEPLOY_KEY
+      # (una chiave SSH non scade, a differenza di un token).
+      # continue-on-error: se la chiave manca o il checkout fallisce, i test
       # funzionali girano comunque; mancano solo i controlli di sicurezza.
       - name: Checkout test di sicurezza (repo privato)
         id: security_checkout
@@ -91,7 +92,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: MattiaZanchin94/website-quality-lab-security
-          token: ${{ secrets.SECURITY_REPO_TOKEN }}
+          ssh-key: ${{ secrets.SECURITY_REPO_DEPLOY_KEY }}
           path: .security-tests
 
       - name: Inietta i test di sicurezza
@@ -100,7 +101,7 @@ jobs:
             cp .security-tests/Tests/SecurityTests.cs Tests/SecurityTests.cs
             echo "Test di sicurezza iniettati da website-quality-lab-security."
           else
-            echo "::warning::Repo privato dei test di sicurezza non disponibile (secret SECURITY_REPO_TOKEN mancante o checkout fallito). Procedo senza i controlli di sicurezza."
+            echo "::warning::Repo privato dei test di sicurezza non disponibile (deploy key SECURITY_REPO_DEPLOY_KEY mancante o checkout fallito). Procedo senza i controlli di sicurezza."
           fi
 
       - name: Setup .NET 10
