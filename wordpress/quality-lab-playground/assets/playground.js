@@ -391,8 +391,15 @@
     return { ok: res.ok, status: res.status, body };
   }
 
+  // Feature nascoste dalla vetrina pubblica: restano nel summary.json (le legge la pagina riservata),
+  // ma non vengono mostrate qui nella Playground. I conteggi si ricalcolano dai test rimasti (groupByBrowser).
+  const HIDDEN_FEATURES = ["SEO"];
   // GitHub Pages tiene i file in cache per qualche minuto: il parametro ?t= forza la versione aggiornata.
-  const loadSummary = async () => (await getJson(cfg.summaryUrl + "?t=" + Date.now())).body;
+  const loadSummary = async () => {
+    const s = (await getJson(cfg.summaryUrl + "?t=" + Date.now())).body;
+    if (s && Array.isArray(s.tests)) s.tests = s.tests.filter((t) => !HIDDEN_FEATURES.includes(t.feature));
+    return s;
+  };
   const loadStatus = async () => (await getJson(cfg.statusUrl)).body;
 
   // Testo nella lingua della pagina, con l'italiano come riserva se manca la traduzione.
