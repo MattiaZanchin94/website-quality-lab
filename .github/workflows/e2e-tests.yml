@@ -52,7 +52,7 @@ jobs:
     # WebKit con tutte le dipendenze di sistema sono già installati, quindi non si scarica nulla
     # dai mirror Ubuntu (che a volte si bloccavano). Gira come root: HOME=/root serve a Firefox.
     container:
-      image: mcr.microsoft.com/playwright/dotnet:v1.65.0-noble
+      image: mcr.microsoft.com/playwright/dotnet:v1.65.1-noble
       options: --ipc=host
     strategy:
       fail-fast: false # se un browser fallisce, gli altri continuano
@@ -76,7 +76,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       # Il codice dei test di sicurezza vive in un repository PRIVATO
       # (website-quality-lab-security): non è pubblico. Prima della build lo
@@ -88,7 +88,7 @@ jobs:
       - name: Checkout test di sicurezza (repo privato)
         id: security_checkout
         continue-on-error: true
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           repository: MattiaZanchin94/website-quality-lab-security
           token: ${{ secrets.SECURITY_REPO_TOKEN }}
@@ -104,7 +104,7 @@ jobs:
           fi
 
       - name: Setup .NET 10
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
 
@@ -151,7 +151,7 @@ jobs:
           $CHANNEL_ARGS
 
       - name: Upload Allure results
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: allure-results-${{ matrix.browser }}
           path: bin/Release/net10.0/allure-results
@@ -190,10 +190,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v7
         with:
           node-version: lts/*
           cache: npm
@@ -203,7 +203,7 @@ jobs:
 
       # Scarica i risultati di tutti i browser nella stessa cartella.
       - name: Download Allure results
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           pattern: allure-results-*
           path: allure-results
@@ -221,7 +221,7 @@ jobs:
 
       # Il report Allure completo NON viene pubblicato: resta un artifact dell'esecuzione.
       - name: Keep Allure report as artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: allure-report
           path: allure-report
@@ -243,13 +243,13 @@ jobs:
           cp history.jsonl public/history.jsonl
 
       - name: Upload public data
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@v5
         with:
           path: public
 
       - name: Deploy to GitHub Pages
         id: deploy
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
       # Avviso su Telegram quando i controlli smoke cambiano stato (verde → rosso, rosso → verde).
       # Token e chat id sono secrets del repository: se mancano, il passaggio non fa nulla.
