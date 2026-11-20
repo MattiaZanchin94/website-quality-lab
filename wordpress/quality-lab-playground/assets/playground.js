@@ -1181,9 +1181,24 @@
     ).join("")}</div>`;
   }
 
-  // Indirizzo della scheda Sicurezza, da condividere (es. mattiazanchin.com/playground/#sicurezza).
+  // Indirizzo della scheda Sicurezza, da condividere. Due forme:
+  //   ?campo=sicurezza  (consigliata nei link: sopravvive a redirect, CAPTCHA e browser delle app,
+  //                      che a volte perdono la parte dopo il #)
+  //   #sicurezza        (quella che la pagina scrive nella barra quando si cambia scheda)
+  // In inglese: ?court=security e #security; le due lingue accettano entrambe.
   const SECURITY_HASH = LANG === "en" ? "#security" : "#sicurezza";
-  const isSecurityHash = () => /^#(sicurezza|security)$/i.test(location.hash);
+  const SECURITY_PARAMS = ["campo", "court"];
+  const isSecurityValue = (v) => /^(sicurezza|security|difesa|defense)$/i.test(v || "");
+  const isSecurityHash = () =>
+    isSecurityValue(location.hash.slice(1)) ||
+    SECURITY_PARAMS.some((p) => isSecurityValue(new URLSearchParams(location.search).get(p)));
+  // L'indirizzo senza il parametro della scheda (gli altri, es. utm_*, restano per le statistiche).
+  function searchWithoutCourt() {
+    const params = new URLSearchParams(location.search);
+    SECURITY_PARAMS.forEach((p) => params.delete(p));
+    const s = params.toString();
+    return s ? "?" + s : "";
+  }
 
   function openArea(area) {
     if (area === currentArea()) return;
@@ -1195,7 +1210,8 @@
     }
     state.view = "all";
     // L'indirizzo segue la scheda, senza aggiungere voci alla cronologia del browser.
-    history.replaceState(null, "", area === "security" ? SECURITY_HASH : location.pathname + location.search);
+    // Tornando a Funzionalità togliamo anche ?campo=sicurezza, altrimenti ricaricando si riaprirebbe la Sicurezza.
+    history.replaceState(null, "", location.pathname + searchWithoutCourt() + (area === "security" ? SECURITY_HASH : ""));
     track("playground_tab", { area, section: area === "security" ? "security" : state.section });
     render();
   }
