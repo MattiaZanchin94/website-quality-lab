@@ -68,6 +68,7 @@
 }
 .qlp-ok { color: var(--qlp-ok); background: var(--qlp-ok-bg); }
 .qlp-ko { color: var(--qlp-ko); background: var(--qlp-ko-bg); }
+.qlp-unk { color: #92400e; background: #fef3c7; } /* non verificabile: né superato né fallito */
 .qlp-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
 .qlp-ok .qlp-dot { animation: qlp-pulse 2s infinite; }
 @keyframes qlp-pulse { 50% { opacity: 0.35; } }

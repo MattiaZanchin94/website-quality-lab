@@ -19,6 +19,8 @@
       loadError: "Al momento non è possibile caricare i risultati. Riprova tra poco.",
       siteOk: "Sito operativo",
       siteKo: "Problemi rilevati",
+      // Tutti i controlli della vista bloccati dal CAPTCHA dell'hosting: nessun esito, né buono né cattivo.
+      siteUnverified: "Non verificabile al momento",
       lastRun: (ago, by) => `Ultima esecuzione ${ago}, avviata da ${by}`,
       triggers: {
         schedule: "esecuzione automatica oraria",
@@ -177,6 +179,7 @@
       loadError: "Results can't be loaded right now. Please try again shortly.",
       siteOk: "Site operational",
       siteKo: "Issues detected",
+      siteUnverified: "Can't be verified right now",
       lastRun: (ago, by) => `Last run ${ago}, started by ${by}`,
       triggers: {
         schedule: "the hourly automatic run",
@@ -581,7 +584,7 @@
       broken: count("broken"),
       skipped,
       successRate: verified ? Math.round((count("passed") / verified) * 1000) / 10 : 0,
-      status: verified && count("failed") + count("broken") === 0 ? "passed" : "failed",
+      status: !verified ? "unverified" : count("failed") + count("broken") === 0 ? "passed" : "failed",
       slowestDurationMs: slowest || s.slowestDurationMs,
     };
   }
@@ -1169,7 +1172,7 @@
       totalMs: run.totalMs || null,
       startedAt: run.startedAt ?? s.startedAt,
       trigger: run.trigger ?? s.trigger,
-      status: verified && passed === verified ? "passed" : "failed",
+      status: !verified ? "unverified" : passed === verified ? "passed" : "failed",
     };
   }
 
@@ -1276,6 +1279,9 @@
     const d = viewData(s);
     const info = liveInfo(); // null se non c'è un'esecuzione in corso
     const ok = d.status === "passed";
+    // Esito in alto: verde, rosso oppure giallo quando l'hosting ha bloccato tutti i controlli.
+    const [pillClass, pillText] =
+      d.status === "unverified" ? ["qlp-unk", T.siteUnverified] : ok ? ["qlp-ok", T.siteOk] : ["qlp-ko", T.siteKo];
     const byFeature = {};
     const listed = state.priority === "all" ? d.tests : d.tests.filter((t) => priorityOf(t) === state.priority);
     for (const t of listed) (byFeature[featureOf(t)] ||= []).push(t);
@@ -1284,15 +1290,15 @@
       ? `
         <h3 class="qlp-results-title">${esc(T.resultsTitle)}</h3>
         <div class="qlp-head">
-          <span class="qlp-pill ${ok ? "qlp-ok" : "qlp-ko"}">
-            <span class="qlp-dot"></span>${esc(ok ? T.siteOk : T.siteKo)}
+          <span class="qlp-pill ${pillClass}">
+            <span class="qlp-dot"></span>${esc(pillText)}
           </span>
           <span class="qlp-meta">${esc(T.lastRun(timeAgo(d.startedAt), T.triggers[d.trigger] || d.trigger))}</span>
         </div>
 
         <div class="qlp-stats">
           <div class="qlp-stat"><span class="qlp-num">${d.passed}/${d.total}</span><span class="qlp-label">${esc(T.checksPassed)}</span></div>
-          <div class="qlp-stat"><span class="qlp-num">${d.successRate.toLocaleString(LANG)}%</span><span class="qlp-label">${esc(T.successRate)}</span></div>
+          <div class="qlp-stat"><span class="qlp-num">${d.status === "unverified" ? "—" : d.successRate.toLocaleString(LANG) + "%"}</span><span class="qlp-label">${esc(T.successRate)}</span></div>
           ${renderDurationStat(d)}
         </div>
         ${d.skipped ? `<p class="qlp-blocked">${esc(T.blockedNote(d.skipped))}</p>` : ""}
