@@ -8,7 +8,7 @@
 
 End-to-end test suite that continuously checks my website, [mattiazanchin.com](https://mattiazanchin.com), on four desktop browsers and five emulated phones and tablets, checks its security with passive checks and publishes the results on the site itself.
 
-On the **[Playground](https://mattiazanchin.com/playground/)** page anyone can see the latest results in plain language and **start a new test run**. The page recognises the visitor's device: from a computer it opens the desktop browsers, from an iPhone, an Android phone or an iPad it opens and runs that emulated device. The page has two tabs, **Functionality** (desktop, phones and tablets) and **Security** (encrypted connection, certificate and site protections), each with its own run button: the two checks can even run at the same time. The Security tab has its own address, [/playground/#security](https://mattiazanchin.com/en/playground/#security). The page is available in Italian and English.
+On the **[Playground](https://mattiazanchin.com/playground/)** page anyone can see the latest results in plain language and **start a new test run**. The page recognises the visitor's device: from a computer it opens the desktop browsers, from an iPhone, an Android phone or an iPad it opens and runs that emulated device. The page has two tabs, **Functionality** (desktop, phones and tablets) and **Security** (encrypted connection, certificate and site protections), each with its own run button: the two checks can even run at the same time. The Security tab has its own address, [/playground/?court=security](https://mattiazanchin.com/en/playground/?court=security) (`#security` works too, but the parameter survives redirects and in-app browsers better). The page is available in Italian and English.
 
 ---
 
