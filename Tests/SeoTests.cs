@@ -69,6 +69,11 @@ public class SeoTests : QualityLabTest
 
     [TestCaseSource(nameof(PageCases))]
     [AllureDescription("Verifica title, lingua, meta description, canonical, un solo H1 visibile e che la pagina sia indicizzabile.")]
+    // Spiegazione ⓘ per i visitatori della Playground.
+    [AllureLabel(ExplainWhat, "Controlla che la pagina dia ai motori di ricerca le informazioni di base: titolo, lingua, descrizione, indirizzo canonico, un solo titolo principale (H1) e che sia indicizzabile.")]
+    [AllureLabel(ExplainWhy, "Sono le fondamenta della SEO: senza, Google fatica a capire, mostrare e indicizzare correttamente la pagina nei risultati di ricerca.")]
+    [AllureLabel(ExplainWhatEn, "Checks that the page gives search engines the basics: title, language, description, canonical URL, a single main heading (H1) and that it is indexable.")]
+    [AllureLabel(ExplainWhyEn, "These are the SEO fundamentals: without them, Google struggles to understand, display and index the page correctly in search results.")]
     public async Task PageHasEssentialSeoTags(string path, string expectedLang)
     {
         SetMetadataFor(path, "La pagina «{0}» ha i tag SEO essenziali", "The “{0}” page has the essential SEO tags");
@@ -105,6 +110,11 @@ public class SeoTests : QualityLabTest
 
     [TestCaseSource(nameof(PageCases))]
     [AllureDescription("Verifica i tag Open Graph (og:title, og:description, og:url, og:image) usati per l'anteprima quando il link viene condiviso sui social.")]
+    // Spiegazione ⓘ per i visitatori della Playground.
+    [AllureLabel(ExplainWhat, "Controlla i tag Open Graph (titolo, descrizione, indirizzo e immagine) che definiscono l'anteprima del link quando viene condiviso.")]
+    [AllureLabel(ExplainWhy, "Quando il link viene condiviso su LinkedIn, Facebook o WhatsApp, questi tag decidono titolo, testo e immagine dell'anteprima: senza, l'anteprima è povera o sbagliata.")]
+    [AllureLabel(ExplainWhatEn, "Checks the Open Graph tags (title, description, URL and image) that define the link's preview when it is shared.")]
+    [AllureLabel(ExplainWhyEn, "When the link is shared on LinkedIn, Facebook or WhatsApp, these tags set the preview's title, text and image: without them the preview looks poor or wrong.")]
     public async Task PageHasSocialPreviewTags(string path, string expectedLang)
     {
         SetMetadataFor(path, "La pagina «{0}» ha l'anteprima social (Open Graph)",
