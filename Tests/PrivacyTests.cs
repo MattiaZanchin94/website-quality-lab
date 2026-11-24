@@ -10,6 +10,7 @@ namespace QualityLab.Tests;
 /// che cosa succede davvero nel browser, non solo che il banner sia presente.
 /// </summary>
 [TestFixture]
+[Category("Privacy")]
 [Category("Regression")]
 [AllureFeature("Privacy")]
 [AllureLabel(FeatureEn, "Privacy")]

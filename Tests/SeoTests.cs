@@ -11,6 +11,7 @@ namespace QualityLab.Tests;
 /// pagina sia indicizzata e mostrata correttamente. Non modificano nulla sul sito.
 /// </summary>
 [TestFixture]
+[Category("Seo")]
 [Category("Regression")]
 [AllureFeature("SEO")]
 [AllureLabel(FeatureEn, "SEO")]

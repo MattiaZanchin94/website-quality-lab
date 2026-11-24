@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Quality Lab Playground
  * Description: Mostra i risultati dei test E2E del sito e permette ai visitatori di avviarli. Shortcode: [quality_lab_playground]
- * Version:     1.14.9
+ * Version:     1.15.0
  * Author:      Mattia Zanchin
  * License:     MIT
  *
@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const QLP_VERSION     = '1.14.9';
+const QLP_VERSION     = '1.15.0';
 const QLP_REPO        = 'MattiaZanchin94/website-quality-lab';
 const QLP_WORKFLOW    = 'e2e-tests.yml';
 const QLP_PAGES_URL   = 'https://mattiazanchin94.github.io/website-quality-lab';
@@ -23,6 +23,10 @@ const QLP_COOLDOWNS   = array(
 	'functional' => 10 * MINUTE_IN_SECONDS,
 	'security'   => 5 * MINUTE_IN_SECONDS,
 );
+// Campetti che gli ospiti NON possono avviare: i controlli di sicurezza toccano file sensibili
+// (.env, backup, log) e l'hosting li considera sospetti. Si avviano solo a mano, d'accordo con SiteGround;
+// la pagina continua a mostrare gli ultimi risultati.
+const QLP_MANUAL_ONLY = array( 'security' );
 const QLP_STATUS_TTL  = 10;                      // secondi di cache dello stato, per non interrogare GitHub a ogni visita
 const QLP_BROWSERS    = array( 'all', 'desktop', 'mobile', 'chromium', 'msedge', 'firefox', 'webkit', 'iphone', 'android', 'ipad', 'security' ); // valori ammessi per l'avvio (il Galaxy Fold gira solo in automatico)
 const QLP_TEST_BROWSERS = array( 'chromium', 'msedge', 'firefox', 'webkit', 'iphone', 'android', 'fold', 'ipad', 'ipadland' );
@@ -207,6 +211,7 @@ add_action(
 							'progress'          => $run ? qlp_progress_for_run( $run['id'] ) : new stdClass(),
 							'cooldownRemaining' => qlp_cooldown_remaining( $area ),
 							'cooldown'          => QLP_COOLDOWNS[ $area ], // durata della pausa, in secondi
+							'manualOnly'        => in_array( $area, QLP_MANUAL_ONLY, true ),
 						);
 					}
 					return qlp_no_cache(
@@ -254,7 +259,10 @@ function qlp_handle_run( WP_REST_Request $request ) {
 		$browser = 'all';
 	}
 
-	$area      = qlp_area_of( $browser );
+	$area = qlp_area_of( $browser );
+	if ( in_array( $area, QLP_MANUAL_ONLY, true ) ) {
+		return qlp_no_cache( new WP_REST_Response( array( 'started' => false, 'reason' => 'manual_only' ), 403 ) );
+	}
 	$remaining = qlp_cooldown_remaining( $area );
 	if ( $remaining > 0 ) {
 		return qlp_no_cache(

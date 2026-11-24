@@ -19,6 +19,9 @@ const results = await Promise.all(
 
 const label = (r, name) => r.labels?.find((l) => l.name === name)?.value ?? null;
 const browserOf = (r) => label(r, "browser") ?? "chromium";
+// Verifica impedita dall'anti-bot dell'hosting (etichetta "antibot", vedi QualityLabTest): in Allure è Broken,
+// ma non è un problema del sito. Nelle pagine (Playground e dashboard) la mostriamo come "non verificabile".
+const statusOf = (r) => (label(r, "antibot") ? "skipped" : r.status);
 // [Category("Security")] in C#: i controlli di sicurezza hanno il loro "campetto" nella pagina Playground.
 // Label explain_* impostate nei test C# (vedi QualityLabTest): null se il controllo non ne ha.
 const explainOf = (r) => {
@@ -72,7 +75,7 @@ for (const r of results) {
     durations: {}, // durata in ms per browser
   };
   const browser = browserOf(r);
-  t.browsers[browser] = r.status;
+  t.browsers[browser] = statusOf(r);
   t.durations[browser] = r.stop - r.start;
   byKey.set(id, t);
 }

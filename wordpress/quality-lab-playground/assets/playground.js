@@ -103,6 +103,10 @@
       allBrowsers: "Tutti i browser",
       allDevices: "Tutti i dispositivi",
       autoOnly: "Solo nelle esecuzioni automatiche",
+      manualOnly: "🔒 Avvio riservato al proprietario",
+      whyManual:
+        "Alcuni controlli di sicurezza provano a leggere file che non devono essere pubblici: per l'hosting sono richieste sospette. " +
+        "Per questo si avviano solo a mano, d'accordo con il fornitore. Qui trovi gli ultimi risultati.",
       tabsLabel: "Scegli il browser",
       tabsLabelMobile: "Scegli il dispositivo",
       noResults: "Nessun risultato ancora per questo browser: avvia i controlli per ottenerli.",
@@ -259,6 +263,10 @@
       allBrowsers: "All browsers",
       allDevices: "All devices",
       autoOnly: "Automatic runs only",
+      manualOnly: "🔒 Started by the owner only",
+      whyManual:
+        "Some security checks try to read files that must not be public: to the hosting provider these look like suspicious requests. " +
+        "That's why they are started manually only, in agreement with the provider. Here you can see the latest results.",
       tabsLabel: "Choose the browser",
       tabsLabelMobile: "Choose the device",
       noResults: "No results yet for this browser: run the checks to get them.",
@@ -1454,6 +1462,10 @@
 
     if (!st || !st.configured) {
       return ""; // senza token il pulsante non viene mostrato
+    } else if (st.manualOnly) {
+      label = T.manualOnly; // es. Sicurezza: solo a mano, d'accordo con l'hosting
+      disabled = true;
+      why = T.whyManual;
     } else if (!RUN_KEY[state.view]) {
       label = T.autoOnly; // es. Galaxy Fold: solo nelle esecuzioni automatiche
       disabled = true;
