@@ -163,7 +163,9 @@ jobs:
       - name: Fail the job if tests failed
         if: steps.tests.outcome == 'failure'
         run: |
-          node -e '
+          # Nel container .NET di Playwright non c'è node nel PATH: usiamo quello incluso in Playwright.
+          node=bin/Release/net10.0/.playwright/node/linux-x64/node
+          "$node" -e '
             const fs = require("fs"), dir = "bin/Release/net10.0/allure-results";
             const results = fs.readdirSync(dir).filter((f) => f.endsWith("-result.json"))
               .map((f) => JSON.parse(fs.readFileSync(dir + "/" + f, "utf8")));
