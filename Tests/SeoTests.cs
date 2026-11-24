@@ -14,7 +14,6 @@ namespace QualityLab.Tests;
 [Category("Seo")]
 [AllureFeature("SEO")]
 [AllureLabel(FeatureEn, "SEO")]
-[AllureSeverity(Major)]
 public class SeoTests : QualityLabTest
 {
     // Pagine pubbliche di contenuto su cui verifichiamo la SEO, con la lingua attesa dell'attributo <html lang>.
@@ -111,6 +110,7 @@ public class SeoTests : QualityLabTest
     }
 
     [Category("Regression")]
+    [AllureSeverity(Major)]
     [TestCaseSource(nameof(PageCases))]
     [AllureDescription("Verifica i tag Open Graph (og:title, og:description, og:url, og:image) usati per l'anteprima quando il link viene condiviso sui social.")]
     // Spiegazione ⓘ per i visitatori della Playground.
