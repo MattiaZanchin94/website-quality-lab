@@ -184,7 +184,7 @@ jobs:
       id-token: write
     environment:
       name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
+      url: ${{ steps.deploy_first.outputs.page_url || steps.deploy_retry.outputs.page_url }}
     env:
       PAGES_URL: https://mattiazanchin94.github.io/website-quality-lab
       RESULTS_DIR: allure-results
@@ -248,8 +248,34 @@ jobs:
         with:
           path: public
 
+      # A volte GitHub non "vede" subito il pacchetto appena caricato e deploy-pages si ferma con
+      # «No artifacts named github-pages». Aspettiamo che compaia (massimo 2 minuti) e, se il primo
+      # tentativo fallisce comunque, riproviamo una volta dopo una pausa.
+      - name: Aspetta che il pacchetto delle Pages sia visibile
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for i in $(seq 1 24); do
+            n=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" \
+              "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts?name=github-pages" \
+              | jq '.total_count') || n=0
+            if [ "${n:-0}" -ge 1 ]; then echo "Pacchetto visibile dopo $(( (i - 1) * 5 )) s."; exit 0; fi
+            sleep 5
+          done
+          echo "::warning::Il pacchetto github-pages non è ancora visibile dopo 2 minuti: provo comunque."
+
       - name: Deploy to GitHub Pages
-        id: deploy
+        id: deploy_first
+        continue-on-error: true
+        uses: actions/deploy-pages@v5
+
+      - name: Pausa prima di riprovare
+        if: steps.deploy_first.outcome == 'failure'
+        run: sleep 30
+
+      - name: Deploy to GitHub Pages (riprova)
+        id: deploy_retry
+        if: steps.deploy_first.outcome == 'failure'
         uses: actions/deploy-pages@v5
 
       # Avviso su Telegram quando i controlli smoke cambiano stato (verde → rosso, rosso → verde).
