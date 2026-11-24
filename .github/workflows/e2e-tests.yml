@@ -22,18 +22,18 @@ on:
         type: choice
         required: false
         default: all
-        options: [all, desktop, mobile, chromium, msedge, firefox, webkit, iphone, android, ipad, fold, security]
+        options: [all, desktop, mobile, chromium, msedge, firefox, webkit, iphone, android, ipad, fold, seo, marketing, security]
       test_alert:
         description: "Manda un messaggio di prova su Telegram (per verificare la configurazione degli avvisi)"
         type: boolean
         required: false
         default: false
 
-# Due "campetti" con la loro coda: Funzionalità (tutto il resto) e Sicurezza (browser = security).
-# Nello stesso campetto una nuova richiesta aspetta che finisca quella in corso;
-# una partita di sicurezza invece può giocare insieme a una di funzionalità.
+# Quattro "campetti", ognuno con la sua coda: Funzionalità (tutto il resto), SEO, Marketing e Sicurezza
+# (browser = seo / marketing / security). Nello stesso campetto una nuova richiesta aspetta che finisca
+# quella in corso; campetti diversi possono giocare insieme.
 concurrency:
-  group: e2e-${{ inputs.browser == 'security' && 'security' || 'functional' }}
+  group: e2e-${{ contains(fromJSON('["security","seo","marketing"]'), inputs.browser) && inputs.browser || 'functional' }}
   cancel-in-progress: false
 
 permissions:
@@ -57,7 +57,7 @@ jobs:
     strategy:
       fail-fast: false # se un browser fallisce, gli altri continuano
       matrix:
-        browser: ${{ fromJSON(inputs.browser == 'security' && '["chromium"]' || inputs.browser == 'desktop' && '["chromium","msedge","firefox","webkit"]' || inputs.browser == 'mobile' && '["iphone","android","ipad","ipadland"]' || inputs.browser == 'ipad' && '["ipad","ipadland"]' || (inputs.browser && inputs.browser != 'all') && format('["{0}"]', inputs.browser) || '["chromium","msedge","firefox","webkit","iphone","android","ipad","ipadland","fold"]') }}
+        browser: ${{ fromJSON(contains(fromJSON('["security","seo","marketing"]'), inputs.browser) && '["chromium"]' || inputs.browser == 'desktop' && '["chromium","msedge","firefox","webkit"]' || inputs.browser == 'mobile' && '["iphone","android","ipad","ipadland"]' || inputs.browser == 'ipad' && '["ipad","ipadland"]' || (inputs.browser && inputs.browser != 'all') && format('["{0}"]', inputs.browser) || '["chromium","msedge","firefox","webkit","iphone","android","ipad","ipadland","fold"]') }}
     env:
       # Motore di Playwright per ogni voce della matrice:
       #   Edge è Chromium con il channel "msedge"; Android e Galaxy Fold sono Chromium emulato;
@@ -70,7 +70,11 @@ jobs:
       # Playground non possono avviarli: alcuni provano a leggere file sensibili e l'hosting (SiteGround)
       # li considera richieste sospette. Si avviano solo a mano da GitHub (browser = security,
       # source = manual), d'accordo con il fornitore. Tutte le altre esecuzioni li escludono.
-      TEST_FILTER: ${{ (inputs.browser == 'security' && inputs.source != 'website') && '--filter TestCategory=Security' || '--filter TestCategory!=Security' }}
+      # Campetti SEO e Marketing: stesso risultato con ogni browser, quindi girano solo su Chromium.
+      #   - partita SEO / Marketing (browser = seo / marketing): solo quei controlli;
+      #   - Chromium nelle esecuzioni orarie, nei push e negli avvii manuali: funzionalità + SEO + Marketing;
+      #   - partite di funzionalità avviate dagli ospiti e gli altri browser: solo funzionalità.
+      TEST_FILTER: ${{ (inputs.browser == 'security' && inputs.source != 'website') && '--filter TestCategory=Security' || inputs.browser == 'seo' && '--filter TestCategory=Seo' || inputs.browser == 'marketing' && '--filter TestCategory=Marketing' || (matrix.browser == 'chromium' && inputs.source != 'website') && '--filter TestCategory!=Security' || '--filter TestCategory!=Security&TestCategory!=Seo&TestCategory!=Marketing' }}
       HOME: /root
 
     steps:
@@ -217,6 +221,12 @@ jobs:
 
       - name: Install Allure 3
         run: npm ci
+
+      # Il plugin WordPress si carica a mano sul sito: qui controlliamo almeno la sintassi PHP a ogni
+      # esecuzione (il runner Ubuntu ha PHP). Non blocca la pubblicazione dei risultati.
+      - name: Controllo sintassi del plugin WordPress
+        continue-on-error: true
+        run: php -l wordpress/quality-lab-playground/quality-lab-playground.php
 
       # Scarica i risultati di tutti i browser nella stessa cartella.
       - name: Download Allure results

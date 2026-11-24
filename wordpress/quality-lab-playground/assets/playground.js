@@ -69,7 +69,7 @@
         "L'iPad viene provato sia in verticale sia in orizzontale; il Galaxy Fold solo nelle esecuzioni automatiche.",
       ],
       // Primo livello: cosa si verifica. Secondo livello (solo Funzionalità): dove.
-      areas: { functional: "🧭 Funzionalità", security: "🔒 Sicurezza" },
+      areas: { functional: "🧭 Funzionalità", security: "🔒 Sicurezza", marketing: "📣 Marketing", seo: "🔎 SEO" },
       areasLabel: "Scegli cosa verificare",
       // Finestra ⓘ accanto ai controlli che hanno una spiegazione.
       explainButton: (name) => `Cosa significa il controllo «${name}»?`,
@@ -80,6 +80,15 @@
         "Questi controlli leggono le risposte del sito come farebbe un visitatore: connessione cifrata, certificato, " +
         "protezioni inviate al browser e informazioni che WordPress non deve rivelare. Sono uguali per tutti i browser, quindi vengono verificati una volta, con Chrome.",
       durationSecurity: "tempo dei controlli di sicurezza",
+      durationSeo: "tempo dei controlli SEO",
+      durationMarketing: "tempo dei controlli di marketing",
+      seoNote:
+        "I segnali di base che Google e i social leggono su ogni pagina chiave: titolo, descrizione, lingua, " +
+        "indirizzo canonico e anteprima per la condivisione. Sono uguali per tutti i browser, quindi vengono verificati una volta, con Chrome.",
+      marketingNote:
+        "Misurazione delle visite (Google Analytics 4 con il consenso), campagne con parametri UTM, contatti, brand nei titoli, " +
+        "pagina 404, anteprime social e velocità da smartphone. Gli invii ad Analytics dei test vengono sempre bloccati, " +
+        "quindi le statistiche restano pulite. Si verificano una volta, con Chrome.",
       sectionsLabel: "Scegli dove verificare il sito",
       // Varianti di ogni browser: il computer e i dispositivi emulati con lo stesso motore.
       variantNames: { chromium: "computer", android: "Android", fold: "Galaxy Fold chiuso", msedge: "computer", firefox: "computer", webkit: "computer", iphone: "iPhone", ipad: "iPad verticale", ipadland: "iPad orizzontale" },
@@ -231,7 +240,7 @@
         "Like at the playground, everyone takes turns: one game at a time and, between visitors' runs, 10 minutes to mop the court. The pause is the same for everyone, so the site doesn't get tired.",
         "The iPad is tested both in portrait and in landscape; the Galaxy Fold only in the automatic runs.",
       ],
-      areas: { functional: "🧭 Functionality", security: "🔒 Security" },
+      areas: { functional: "🧭 Functionality", security: "🔒 Security", marketing: "📣 Marketing", seo: "🔎 SEO" },
       areasLabel: "Choose what to check",
       explainButton: (name) => `What does the check “${name}” mean?`,
       explainWhat: "What it checks",
@@ -241,6 +250,15 @@
         "These checks read the site's responses like a visitor would: encrypted connection, certificate, " +
         "protections sent to the browser and information WordPress must not reveal. They're the same for every browser, so they're checked once, with Chrome.",
       durationSecurity: "time of the security checks",
+      durationSeo: "time of the SEO checks",
+      durationMarketing: "time of the marketing checks",
+      seoNote:
+        "The basic signals Google and social networks read on every key page: title, description, language, " +
+        "canonical address and sharing preview. They're the same for every browser, so they're checked once, with Chrome.",
+      marketingNote:
+        "Visit measurement (Google Analytics 4 with consent), UTM campaign parameters, contacts, brand in titles, " +
+        "404 page, social previews and speed on phones. The tests' Analytics hits are always blocked, " +
+        "so the statistics stay clean. Checked once, with Chrome.",
       sectionsLabel: "Choose where to check the site",
       variantNames: { chromium: "computer", android: "Android", fold: "folded Galaxy Fold", msedge: "computer", firefox: "computer", webkit: "computer", iphone: "iPhone", ipad: "iPad portrait", ipadland: "iPad landscape" },
       failedOn: (names) => `not passed on: ${names}`,
@@ -365,10 +383,13 @@
   function newShots() {
     return { seen: {}, results: {}, primed: false, queue: [], playing: false, last: null, lastAt: 0, node: null, dribble: null };
   }
-  const courts = { functional: newCourt(), security: newCourt() };
+  // L'ordine delle schede nella pagina: Funzionalità, Sicurezza, Marketing, SEO.
+  const courts = { functional: newCourt(), security: newCourt(), marketing: newCourt(), seo: newCourt() };
   const AREAS = Object.keys(courts);
-  const GAME_MINUTES = { functional: 3, security: 1 }; // durata tipica di una partita, per le spiegazioni
-  const areaOfSection = (section) => (section === "security" ? "security" : "functional");
+  const GAME_MINUTES = { functional: 3, seo: 1, marketing: 2, security: 1 }; // durata tipica di una partita, per le spiegazioni
+  // Campetti "a sé": un solo browser (Chrome), niente schede per browser, la loro ultima partita.
+  const COURT_SECTIONS = ["seo", "marketing", "security"];
+  const areaOfSection = (section) => (COURT_SECTIONS.includes(section) ? section : "functional");
   const currentArea = () => areaOfSection(state.section);
   const C = () => courts[currentArea()]; // il campetto aperto nella pagina
 
@@ -401,11 +422,13 @@
 
   // Feature nascoste dalla vetrina pubblica: restano nel summary.json (le legge la pagina riservata),
   // ma non vengono mostrate qui nella Playground. I conteggi si ricalcolano dai test rimasti (groupByBrowser).
-  const HIDDEN_FEATURES = ["SEO"];
+  // La SEO base ora ha il suo campetto (area "seo"): nei summary precedenti era tra i controlli funzionali,
+  // quindi lì la nascondiamo finché la prima esecuzione nuova non la sposta.
+  const isLegacySeo = (t) => t.feature === "SEO" && t.area !== "seo";
   // GitHub Pages tiene i file in cache per qualche minuto: il parametro ?t= forza la versione aggiornata.
   const loadSummary = async () => {
     const s = (await getJson(cfg.summaryUrl + "?t=" + Date.now())).body;
-    if (s && Array.isArray(s.tests)) s.tests = s.tests.filter((t) => !HIDDEN_FEATURES.includes(t.feature));
+    if (s && Array.isArray(s.tests)) s.tests = s.tests.filter((t) => !isLegacySeo(t));
     return s;
   };
   const loadStatus = async () => (await getJson(cfg.statusUrl)).body;
@@ -511,6 +534,17 @@
       families: { chromium: ["chromium"] },
       run: { all: "security" },
     },
+    // SEO base e Marketing: come la Sicurezza, un solo browser e un pulsante che avvia solo quei controlli.
+    seo: {
+      names: { chromium: "Chrome" },
+      families: { chromium: ["chromium"] },
+      run: { all: "seo" },
+    },
+    marketing: {
+      names: { chromium: "Chrome" },
+      families: { chromium: ["chromium"] },
+      run: { all: "marketing" },
+    },
   };
   let BROWSER_NAMES, FAMILIES, FAMILY_OF, RUN_KEY;
   function setSection(section) {
@@ -520,9 +554,10 @@
   }
   const isMobileSection = () => state.section === "mobile";
   const isSecuritySection = () => state.section === "security";
+  const isCourtSection = () => COURT_SECTIONS.includes(state.section); // SEO, Marketing o Sicurezza
   // Ogni controllo compare in una sola sezione: quelli di sicurezza nella loro, gli altri in Computer
   // e Smartphone. I summary più vecchi non hanno "area": sono tutti controlli funzionali.
-  const inSection = (t) => (t.area === "security") === isSecuritySection();
+  const inSection = (t) => (t.area || "functional") === areaOfSection(state.section);
 
   // Dispositivo di chi visita: iPhone, iPad (anche quando Safari si presenta come Mac) o Android.
   // Apre la sezione e la scheda corrispondenti; gli altri dispositivi partono dalla sezione Computer.
@@ -580,8 +615,9 @@
     const slowest = Object.values(runs).reduce((m, r) => Math.max(m, r.durationMs || 0), 0);
     // Ultima esecuzione che ha toccato questa sezione (es. solo i dispositivi, avviata da un visitatore).
     // Nella Sicurezza: l'ultima partita di sicurezza (che può essere più recente di quella dei browser).
-    const latestRun = isSecuritySection() && s.securityRun
-      ? s.securityRun
+    const courtRun = isCourtSection() && ((s.areaRuns && s.areaRuns[state.section]) || (isSecuritySection() && s.securityRun));
+    const latestRun = courtRun
+      ? courtRun
       : Object.values(runs).reduce((a, b) => (!a || new Date(b.startedAt) > new Date(a.startedAt) ? b : a), null);
     return {
       ...s,
@@ -760,7 +796,7 @@
     if (m[1] === "desktop") return Object.values(SECTIONS.desktop.families).flat();
     if (m[1] === "mobile") return ["iphone", "android", "ipad", "ipadland"]; // il Fold solo in automatico
     if (m[1] === "ipad") return SECTIONS.mobile.families.ipad;
-    if (m[1] === "security") return ["chromium"];
+    if (COURT_SECTIONS.includes(m[1])) return ["chromium"];
     return ALL_TEST_BROWSERS.includes(m[1]) ? [m[1]] : ALL_TEST_BROWSERS;
   }
 
@@ -966,7 +1002,7 @@
       for (const [key, result] of Object.entries((p && p.tests) || {})) {
         if (result !== "passed" && result !== "failed") continue; // i "non verificabili" non sono tiri
         const t = known.get(key);
-        if (t && (t.area === "security") !== (area === "security")) continue; // controlli dell'altro campetto
+        if (t && (t.area || "functional") !== area) continue; // controlli di un altro campetto
         const id = b + "|" + key;
         sh.results[id] = { b, result }; // per il punteggio, filtrato poi sulla vista aperta
         if (sh.seen[id]) continue;
@@ -1163,10 +1199,10 @@
         successRate: s.successRate,
         // Sicurezza: i controlli girano su Chrome insieme a quelli funzionali, quindi la durata
         // della macchina non dice nulla. Mostriamo la somma dei soli controlli di sicurezza.
-        durationMs: isSecuritySection()
+        durationMs: isCourtSection()
           ? s.tests.reduce((sum, t) => sum + ((t.durations && t.durations.chromium) || 0), 0)
           : totalDuration(s),
-        totalMs: isSecuritySection() ? null : s.totalMs || null,
+        totalMs: isCourtSection() ? null : s.totalMs || null,
         startedAt: s.startedAt,
         trigger: s.trigger,
         status: s.status,
@@ -1210,6 +1246,14 @@
   const isSecurityHash = () =>
     isSecurityValue(location.hash.slice(1)) ||
     SECURITY_PARAMS.some((p) => isSecurityValue(new URLSearchParams(location.search).get(p)));
+  // Anche SEO e Marketing hanno il loro indirizzo: #seo / #marketing oppure ?campo=seo, ?court=marketing.
+  const COURT_HASH = { security: SECURITY_HASH, seo: "#seo", marketing: "#marketing" };
+  function courtFromLocation() {
+    if (isSecurityHash()) return "security";
+    const values = [location.hash.slice(1), ...SECURITY_PARAMS.map((p) => new URLSearchParams(location.search).get(p))]
+      .map((v) => (v || "").toLowerCase());
+    return ["seo", "marketing"].find((c) => values.includes(c)) || null;
+  }
   // L'indirizzo senza il parametro della scheda (gli altri, es. utm_*, restano per le statistiche).
   function searchWithoutCourt() {
     const params = new URLSearchParams(location.search);
@@ -1220,23 +1264,23 @@
 
   function openArea(area) {
     if (area === currentArea()) return;
-    if (area === "security") {
-      state.lastFunctionalSection = state.section;
-      setSection("security");
+    if (COURT_SECTIONS.includes(area)) {
+      if (!isCourtSection()) state.lastFunctionalSection = state.section;
+      setSection(area);
     } else {
       setSection(state.lastFunctionalSection);
     }
     state.view = "all";
     // L'indirizzo segue la scheda, senza aggiungere voci alla cronologia del browser.
     // Tornando a Funzionalità togliamo anche ?campo=sicurezza, altrimenti ricaricando si riaprirebbe la Sicurezza.
-    history.replaceState(null, "", location.pathname + searchWithoutCourt() + (area === "security" ? SECURITY_HASH : ""));
-    track("playground_tab", { area, section: area === "security" ? "security" : state.section });
+    history.replaceState(null, "", location.pathname + searchWithoutCourt() + (COURT_HASH[area] || ""));
+    track("playground_tab", { area, section: state.section });
     render();
   }
 
   // Secondo livello (solo in Funzionalità): computer oppure smartphone e tablet.
   function renderSections() {
-    if (isSecuritySection()) return "";
+    if (isCourtSection()) return "";
     return `<div class="qlp-sections" role="group" aria-label="${esc(T.sectionsLabel)}">${["desktop", "mobile"]
       .map(
         (key) =>
@@ -1246,7 +1290,7 @@
   }
 
   function renderTabs(s) {
-    if (isSecuritySection()) return ""; // un solo browser: niente schede
+    if (isCourtSection()) return ""; // un solo browser: niente schede
     const known = Object.keys(BROWSER_NAMES);
     const tabs = [["all", isMobileSection() ? T.allDevices : T.allBrowsers], ...known.map((b) => [b, BROWSER_NAMES[b]])];
     return `<div class="qlp-tabs" role="tablist" aria-label="${esc(isMobileSection() ? T.tabsLabelMobile : T.tabsLabel)}">${tabs
@@ -1269,8 +1313,8 @@
   function renderDurationStat(d) {
     const parallel = state.view === "all" ? (isMobileSection() ? T.parallelDevices : T.parallelBrowsers) : "";
     if (!d.totalMs) {
-      const label = isSecuritySection()
-        ? T.durationSecurity
+      const label = isCourtSection()
+        ? { security: T.durationSecurity, seo: T.durationSeo, marketing: T.durationMarketing }[state.section]
         : state.view === "all" ? (isMobileSection() ? T.durationAllMobile : T.durationAll) : T.duration;
       return `<div class="qlp-stat"><span class="qlp-num">${minutes(d.durationMs)}</span><span class="qlp-label">${esc(label)}</span></div>`;
     }
@@ -1361,7 +1405,7 @@
                           ? ` <button type="button" class="qlp-info" data-key="${esc(t.key)}" aria-haspopup="dialog" aria-label="${esc(T.explainButton(titleOf(t)))}" title="${esc(T.explainButton(titleOf(t)))}">i</button>`
                           : ""
                       }</span>
-                      ${state.view === "all" && !isSecuritySection() ? renderBrowsers(t, info) : ""}
+                      ${state.view === "all" && !isCourtSection() ? renderBrowsers(t, info) : ""}
                       <span class="qlp-dur">${liveRow ? "—" : seconds(ms)}</span>
                     </li>`;
                   })
@@ -1382,8 +1426,8 @@
           ${renderButton()}
         </div>
         ${
-          isSecuritySection()
-            ? `<p class="qlp-device-note">${esc(T.securityNote)}</p>`
+          isCourtSection()
+            ? `<p class="qlp-device-note">${esc({ security: T.securityNote, seo: T.seoNote, marketing: T.marketingNote }[state.section])}</p>`
             : isMobileSection()
             ? `<p class="qlp-device-note">${esc(T.mobileNote)}</p>`
             : isMobileVisitor()
@@ -1577,7 +1621,7 @@
   // Il riepilogo contiene i risultati di un'esecuzione? (dell'ultima pubblicata, di un browser o della sicurezza:
   // con due campetti, un'altra partita può essere pubblicata subito dopo la nostra)
   function summaryHasRun(s, runId) {
-    const urls = [s.runUrl, s.securityRun && s.securityRun.runUrl, ...Object.values(s.runs || {}).map((r) => r.runUrl)];
+    const urls = [s.runUrl, s.securityRun && s.securityRun.runUrl, ...Object.values(s.areaRuns || {}).map((r) => r && r.runUrl), ...Object.values(s.runs || {}).map((r) => r.runUrl)];
     return urls.some((u) => u && u.endsWith("/" + runId));
   }
 
@@ -1628,9 +1672,10 @@
       state.lastFunctionalSection = "desktop";
       state.view = "all";
     }
-    // Link diretto alla scheda Sicurezza (es. /playground/#sicurezza).
-    if (isSecurityHash()) {
-      setSection("security");
+    // Link diretto a un campetto (es. /playground/#sicurezza, #seo, #marketing).
+    const linkedCourt = courtFromLocation();
+    if (linkedCourt) {
+      setSection(linkedCourt);
       state.view = "all";
     }
     render();
@@ -1661,9 +1706,10 @@
     }
     setInterval(checkForNewRun, 30000);
     document.addEventListener("visibilitychange", checkForNewRun);
-    // Link alla scheda Sicurezza aperto mentre la pagina è già caricata.
+    // Link a un campetto aperto mentre la pagina è già caricata.
     window.addEventListener("hashchange", () => {
-      if (isSecurityHash() && !isSecuritySection()) openArea("security");
+      const court = courtFromLocation();
+      if (court && court !== currentArea()) openArea(court);
     });
   })();
 })();
