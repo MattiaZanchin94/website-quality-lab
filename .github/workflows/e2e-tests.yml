@@ -67,9 +67,8 @@ jobs:
       # Dispositivo emulato (schermo, touch, user agent) letto dai test in QualityLabTest.cs.
       QLP_DEVICE: ${{ contains(fromJSON('["iphone","android","ipad","fold","ipadland"]'), matrix.browser) && matrix.browser || '' }}
       # I controlli di SICUREZZA non girano mai da soli (né ogni ora né a ogni push) e gli ospiti della
-      # Playground non possono avviarli: alcuni somigliano a richieste sospette e l'hosting (SiteGround)
-      # li considera richieste sospette. Si avviano solo a mano da GitHub (browser = security,
-      # source = manual), d'accordo con il fornitore. Tutte le altre esecuzioni li escludono.
+      # Playground non possono avviarli: li avvia solo il proprietario, a mano da GitHub
+      # (browser = security, source = manual). Tutte le altre esecuzioni li escludono.
       # Campetti SEO e Marketing: stesso risultato con ogni browser, quindi girano solo su Chromium.
       #   - partita SEO / Marketing (browser = seo / marketing): solo quei controlli;
       #   - Chromium nelle esecuzioni orarie, nei push e negli avvii manuali: funzionalità + SEO + Marketing;

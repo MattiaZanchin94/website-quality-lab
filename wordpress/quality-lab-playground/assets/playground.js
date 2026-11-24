@@ -82,9 +82,8 @@
       durationSecurity: "tempo dei controlli di sicurezza",
       ownerOnlyTitle: "🔒 Perché solo il proprietario può avviarli",
       ownerOnly:
-        "Per capire se il sito è ben protetto, alcuni di questi controlli si comportano come farebbe un curioso malintenzionato. " +
-        "La protezione dell'hosting non può distinguerli da un tentativo vero e, se si ripetono spesso, blocca chi li fa partire. " +
-        "Per questo li avvio io, ogni tanto e d'accordo con il fornitore del sito. Qui sotto trovi i risultati dell'ultima verifica, con la data.",
+        "Per tutelare il sito, i controlli di sicurezza li avvio solo io, di tanto in tanto. " +
+        "Qui sotto trovi i risultati dell'ultima verifica, con la data.",
       durationSeo: "tempo dei controlli SEO",
       durationMarketing: "tempo dei controlli di marketing",
       seoNote:
@@ -254,9 +253,8 @@
       durationSecurity: "time of the security checks",
       ownerOnlyTitle: "🔒 Why only the owner can start them",
       ownerOnly:
-        "To find out whether the site is well protected, some of these checks behave the way a nosy intruder would. " +
-        "The hosting protection can't tell them apart from a real attempt and, if they are repeated often, it blocks whoever starts them. " +
-        "That's why I start them myself, now and then and in agreement with the site's provider. Below you'll find the results of the latest check, with its date.",
+        "To protect the site, I start the security checks myself, now and then. " +
+        "Below you'll find the results of the latest check, with its date.",
       durationSeo: "time of the SEO checks",
       durationMarketing: "time of the marketing checks",
       seoNote:

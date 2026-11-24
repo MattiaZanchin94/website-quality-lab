@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Quality Lab Playground
  * Description: Mostra i risultati dei test E2E del sito e permette ai visitatori di avviarli. Shortcode: [quality_lab_playground]
- * Version:     1.17.1
+ * Version:     1.17.2
  * Author:      Mattia Zanchin
  * License:     MIT
  *
@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const QLP_VERSION     = '1.17.1';
+const QLP_VERSION     = '1.17.2';
 const QLP_REPO        = 'MattiaZanchin94/website-quality-lab';
 const QLP_WORKFLOW    = 'e2e-tests.yml';
 const QLP_PAGES_URL   = 'https://mattiazanchin94.github.io/website-quality-lab';
@@ -28,9 +28,8 @@ const QLP_COOLDOWNS   = array(
 );
 // Campetti a sé: girano solo su Chrome e hanno la loro coda su GitHub (browser = nome del campetto).
 const QLP_COURT_AREAS = array( 'seo', 'marketing', 'security' );
-// Campetti che gli ospiti NON possono avviare: alcuni controlli di sicurezza somigliano a richieste
-// sospette e la protezione dell'hosting li blocca se si ripetono. Si avviano solo a mano, d'accordo con SiteGround;
-// la pagina continua a mostrare gli ultimi risultati.
+// Campetti che gli ospiti NON possono avviare: i controlli di sicurezza li avvia solo il proprietario,
+// a mano. La pagina continua a mostrare gli ultimi risultati.
 const QLP_MANUAL_ONLY = array( 'security' );
 const QLP_STATUS_TTL  = 10;                      // secondi di cache dello stato, per non interrogare GitHub a ogni visita
 const QLP_BROWSERS    = array( 'all', 'desktop', 'mobile', 'chromium', 'msedge', 'firefox', 'webkit', 'iphone', 'android', 'ipad', 'seo', 'marketing', 'security' ); // valori ammessi per l'avvio (il Galaxy Fold gira solo in automatico)
