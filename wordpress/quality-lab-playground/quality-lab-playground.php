@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Quality Lab Playground
  * Description: Mostra i risultati dei test E2E del sito e permette ai visitatori di avviarli. Shortcode: [quality_lab_playground]
- * Version:     1.15.0
+ * Version:     1.16.0
  * Author:      Mattia Zanchin
  * License:     MIT
  *
@@ -13,22 +13,27 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const QLP_VERSION     = '1.15.0';
+const QLP_VERSION     = '1.16.0';
 const QLP_REPO        = 'MattiaZanchin94/website-quality-lab';
 const QLP_WORKFLOW    = 'e2e-tests.yml';
 const QLP_PAGES_URL   = 'https://mattiazanchin94.github.io/website-quality-lab';
-// Due campetti indipendenti, ognuno con la sua pausa tra un avvio e l'altro (uguale per tutti i visitatori):
-// Funzionalità (computer e dispositivi, 3-5 minuti di partita) e Sicurezza (un minuto circa).
+// Quattro campetti indipendenti, ognuno con la sua pausa tra un avvio e l'altro (uguale per tutti i visitatori):
+// Funzionalità (computer e dispositivi, 3-5 minuti di partita), SEO e Marketing (solo Chrome, 1-2 minuti)
+// e Sicurezza (un minuto circa, avviabile solo dal proprietario).
 const QLP_COOLDOWNS   = array(
 	'functional' => 10 * MINUTE_IN_SECONDS,
+	'seo'        => 5 * MINUTE_IN_SECONDS,
+	'marketing'  => 5 * MINUTE_IN_SECONDS,
 	'security'   => 5 * MINUTE_IN_SECONDS,
 );
+// Campetti a sé: girano solo su Chrome e hanno la loro coda su GitHub (browser = nome del campetto).
+const QLP_COURT_AREAS = array( 'seo', 'marketing', 'security' );
 // Campetti che gli ospiti NON possono avviare: i controlli di sicurezza toccano file sensibili
 // (.env, backup, log) e l'hosting li considera sospetti. Si avviano solo a mano, d'accordo con SiteGround;
 // la pagina continua a mostrare gli ultimi risultati.
 const QLP_MANUAL_ONLY = array( 'security' );
 const QLP_STATUS_TTL  = 10;                      // secondi di cache dello stato, per non interrogare GitHub a ogni visita
-const QLP_BROWSERS    = array( 'all', 'desktop', 'mobile', 'chromium', 'msedge', 'firefox', 'webkit', 'iphone', 'android', 'ipad', 'security' ); // valori ammessi per l'avvio (il Galaxy Fold gira solo in automatico)
+const QLP_BROWSERS    = array( 'all', 'desktop', 'mobile', 'chromium', 'msedge', 'firefox', 'webkit', 'iphone', 'android', 'ipad', 'seo', 'marketing', 'security' ); // valori ammessi per l'avvio (il Galaxy Fold gira solo in automatico)
 const QLP_TEST_BROWSERS = array( 'chromium', 'msedge', 'firefox', 'webkit', 'iphone', 'android', 'fold', 'ipad', 'ipadland' );
 const QLP_PROGRESS_TTL  = 2 * HOUR_IN_SECONDS; // l'avanzamento di un'esecuzione resta disponibile per 2 ore
 
@@ -61,7 +66,7 @@ function qlp_github_request( string $method, string $path, ?array $body = null )
 
 /** Campetto di un valore di avvio: "security" ha il suo, tutti gli altri giocano su Funzionalità. */
 function qlp_area_of( string $browser ): string {
-	return 'security' === $browser ? 'security' : 'functional';
+	return in_array( $browser, QLP_COURT_AREAS, true ) ? $browser : 'functional';
 }
 
 /**
@@ -70,7 +75,7 @@ function qlp_area_of( string $browser ): string {
  * le partite di sicurezza hanno una coda separata su GitHub e possono giocare in parallelo.
  */
 function qlp_area_of_run( array $run ): string {
-	return preg_match( '/·\s*security\s*$/u', (string) $run['display_title'] ) ? 'security' : 'functional';
+	return preg_match( '/·\s*(security|seo|marketing)\s*$/u', (string) $run['display_title'], $m ) ? $m[1] : 'functional';
 }
 
 /**
@@ -83,7 +88,7 @@ function qlp_latest_runs(): array {
 		return $cached;
 	}
 
-	$out      = array( 'functional' => null, 'security' => null );
+	$out      = array( 'functional' => null, 'seo' => null, 'marketing' => null, 'security' => null );
 	$response = qlp_github_request( 'GET', '/actions/workflows/' . QLP_WORKFLOW . '/runs?per_page=20' );
 	if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
 		return $out;

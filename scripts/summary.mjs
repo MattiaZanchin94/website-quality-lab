@@ -29,7 +29,15 @@ const explainOf = (r) => {
   const en = { what: label(r, "explain_what_en"), why: label(r, "explain_why_en") };
   return it.what || en.what ? { it, en } : null;
 };
-const areaOf = (r) =>((r.labels ?? []).some((l) => l.name === "tag" && /^security$/i.test(l.value)) ? "security" : "functional");
+// Campetto del controllo, dalla categoria NUnit (diventa un tag Allure): Security, Seo, Marketing hanno
+// il loro campetto nella Playground; tutto il resto è Funzionalità.
+const AREA_OF_TAG = { security: "security", seo: "seo", marketing: "marketing" };
+const areaOf = (r) => {
+  for (const l of r.labels ?? []) if (l.name === "tag" && AREA_OF_TAG[l.value.toLowerCase()]) return AREA_OF_TAG[l.value.toLowerCase()];
+  return "functional";
+};
+// Campetti con una sola configurazione (Chromium) e una loro "ultima partita" (areaRuns).
+const COURT_AREAS = ["security", "seo", "marketing"];
 
 // Ogni controllo gira su più browser: raggruppiamo le esecuzioni per nome del controllo.
 // Tutte le configurazioni: 4 browser per computer e 5 dispositivi emulati.
@@ -104,6 +112,11 @@ const ranNow = [...new Set(results.map(browserOf))];
 // La partita di sicurezza ha i suoi dati a parte, in "securityRun".
 const functional = results.filter((r) => areaOf(r) === "functional");
 const security = results.filter((r) => areaOf(r) === "security");
+// Ultima partita di ogni campetto a sé (sicurezza, SEO, marketing): avvio, durata, chi l'ha avviata.
+const areaRuns = Object.fromEntries(COURT_AREAS
+  .map((a) => [a, results.filter((r) => areaOf(r) === a)])
+  .filter(([, rs]) => rs.length)
+  .map(([a, rs]) => [a, runInfo(rs)]));
 const ranFunctional = [...new Set(functional.map(browserOf))];
 const runs = Object.fromEntries(ranFunctional.map((b) => [b, runInfo(functional.filter((r) => browserOf(r) === b))]));
 let securityRun = security.length ? runInfo(security) : null;
@@ -133,6 +146,7 @@ if (prev) {
     }
   }
   securityRun ??= prev.securityRun ?? null;
+  for (const a of COURT_AREAS) areaRuns[a] ??= prev.areaRuns?.[a] ?? (a === "security" ? prev.securityRun : null) ?? undefined;
 }
 
 // Stato e durata complessivi di ogni controllo: il peggiore e il più lento tra i browser.
@@ -200,6 +214,7 @@ const summary = {
   runUrl,
   runs,
   securityRun, // ultima partita del campetto Sicurezza (avvio, durata, chi l'ha avviata)
+  areaRuns, // ultima partita di ogni campetto a sé: security, seo, marketing
   tests,
 };
 
