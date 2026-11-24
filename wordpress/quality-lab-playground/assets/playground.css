@@ -327,3 +327,8 @@
 /* La palla del palleggio si vede solo mentre palleggia: durante il tiro vola l'altra. */
 .qlp-shot:not([data-pose="dribble"]) .qlp-dribble-ball { opacity: 0; }
 .qlp-head { transform-box: fill-box; transform-origin: center bottom; }
+
+/* Sicurezza: riquadro che spiega perché solo il proprietario può avviare i controlli. */
+.qlp-owner-only { margin: 12px 0 0; padding: 12px 14px; border-radius: 10px; background: #fff7ed; border: 1px solid #fed7aa; color: #7c2d12; font-size: 14px; line-height: 1.5; }
+.qlp-owner-only p { margin: 0; }
+.qlp-owner-only .qlp-owner-only-title { font-weight: 700; margin-bottom: 4px; }

@@ -80,6 +80,12 @@
         "Questi controlli leggono le risposte del sito come farebbe un visitatore: connessione cifrata, certificato, " +
         "protezioni inviate al browser e informazioni che WordPress non deve rivelare. Sono uguali per tutti i browser, quindi vengono verificati una volta, con Chrome.",
       durationSecurity: "tempo dei controlli di sicurezza",
+      ownerOnlyTitle: "🔒 Perché solo il proprietario può avviarli",
+      ownerOnly:
+        "Alcuni controlli verificano che file riservati del sito (copie della configurazione, backup, log) non siano raggiungibili, " +
+        "e per farlo provano a richiederli. Per la protezione dell'hosting sono richieste sospette, uguali a quelle di un attacco: " +
+        "ripetute di continuo, fanno bloccare l'indirizzo che le invia. Per questo i controlli di sicurezza si avviano solo a mano, " +
+        "dal proprietario e d'accordo con il fornitore del sito. Qui sotto trovi i risultati dell'ultima verifica, con la data.",
       durationSeo: "tempo dei controlli SEO",
       durationMarketing: "tempo dei controlli di marketing",
       seoNote:
@@ -250,6 +256,12 @@
         "These checks read the site's responses like a visitor would: encrypted connection, certificate, " +
         "protections sent to the browser and information WordPress must not reveal. They're the same for every browser, so they're checked once, with Chrome.",
       durationSecurity: "time of the security checks",
+      ownerOnlyTitle: "🔒 Why only the owner can start them",
+      ownerOnly:
+        "Some checks verify that the site's private files (configuration copies, backups, logs) can't be reached, " +
+        "and to do that they try to request them. To the hosting protection these look like suspicious requests, the same as an attack: " +
+        "repeated all the time, they get the sending address blocked. That's why the security checks are started manually only, " +
+        "by the owner and in agreement with the site's provider. Below you'll find the results of the latest check, with its date.",
       durationSeo: "time of the SEO checks",
       durationMarketing: "time of the marketing checks",
       seoNote:
@@ -1427,7 +1439,11 @@
         </div>
         ${
           isCourtSection()
-            ? `<p class="qlp-device-note">${esc({ security: T.securityNote, seo: T.seoNote, marketing: T.marketingNote }[state.section])}</p>`
+            ? `<p class="qlp-device-note">${esc({ security: T.securityNote, seo: T.seoNote, marketing: T.marketingNote }[state.section])}</p>${
+                isSecuritySection() && courtStatus("security") && courtStatus("security").manualOnly
+                  ? `<div class="qlp-owner-only" role="note"><p class="qlp-owner-only-title">${esc(T.ownerOnlyTitle)}</p><p>${esc(T.ownerOnly)}</p></div>`
+                  : ""
+              }`
             : isMobileSection()
             ? `<p class="qlp-device-note">${esc(T.mobileNote)}</p>`
             : isMobileVisitor()
@@ -1508,8 +1524,7 @@
       return ""; // senza token il pulsante non viene mostrato
     } else if (st.manualOnly) {
       label = T.manualOnly; // es. Sicurezza: solo a mano, d'accordo con l'hosting
-      disabled = true;
-      why = T.whyManual;
+      disabled = true; // il motivo è spiegato nel riquadro sotto il pulsante, sempre visibile
     } else if (!RUN_KEY[state.view]) {
       label = T.autoOnly; // es. Galaxy Fold: solo nelle esecuzioni automatiche
       disabled = true;

@@ -12,7 +12,6 @@ namespace QualityLab.Tests;
 /// </summary>
 [TestFixture]
 [Category("Seo")]
-[Category("Regression")]
 [AllureFeature("SEO")]
 [AllureLabel(FeatureEn, "SEO")]
 [AllureSeverity(Major)]
@@ -68,6 +67,8 @@ public class SeoTests : QualityLabTest
         return await locator.CountAsync() > 0 ? await locator.First.GetAttributeAsync(attribute) : null;
     }
 
+    [Category("Smoke")]
+    [AllureSeverity(Blocker)]
     [TestCaseSource(nameof(PageCases))]
     [AllureDescription("Verifica title, lingua, meta description, canonical, un solo H1 visibile e che la pagina sia indicizzabile.")]
     // Spiegazione ⓘ per i visitatori della Playground.
@@ -109,6 +110,7 @@ public class SeoTests : QualityLabTest
             "La pagina è marcata noindex: i motori non la indicizzeranno.");
     }
 
+    [Category("Regression")]
     [TestCaseSource(nameof(PageCases))]
     [AllureDescription("Verifica i tag Open Graph (og:title, og:description, og:url, og:image) usati per l'anteprima quando il link viene condiviso sui social.")]
     // Spiegazione ⓘ per i visitatori della Playground.
