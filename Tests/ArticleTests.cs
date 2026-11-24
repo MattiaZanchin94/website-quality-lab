@@ -5,6 +5,7 @@ using Microsoft.Playwright;
 namespace QualityLab.Tests;
 
 [TestFixture]
+[Category("Functional")]
 [Category("Regression")]
 [AllureFeature("Articoli tecnici")]
 [AllureLabel(FeatureEn, "Technical articles")]

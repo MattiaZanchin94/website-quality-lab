@@ -66,12 +66,11 @@ jobs:
       CHANNEL_ARGS: ${{ matrix.browser == 'msedge' && '-- Playwright.LaunchOptions.Channel=msedge' || '' }}
       # Dispositivo emulato (schermo, touch, user agent) letto dai test in QualityLabTest.cs.
       QLP_DEVICE: ${{ contains(fromJSON('["iphone","android","ipad","fold","ipadland"]'), matrix.browser) && matrix.browser || '' }}
-      # I controlli di sicurezza (header, redirect, certificato) danno lo stesso risultato con
-      # qualsiasi browser: girano solo su Chromium, invece di ripetere le stesse richieste 9 volte.
-      #   - partita di sicurezza (browser = security): solo i controlli di sicurezza;
-      #   - partita di funzionalità avviata dal sito: nessun controllo di sicurezza (hanno il loro campetto);
-      #   - esecuzioni orarie, push e avvii manuali: tutto, con la sicurezza solo su Chromium.
-      TEST_FILTER: ${{ inputs.browser == 'security' && '--filter TestCategory=Security' || (inputs.source == 'website' || matrix.browser != 'chromium') && '--filter TestCategory!=Security' || '' }}
+      # I controlli di SICUREZZA non girano mai da soli (né ogni ora né a ogni push) e gli ospiti della
+      # Playground non possono avviarli: alcuni provano a leggere file sensibili e l'hosting (SiteGround)
+      # li considera richieste sospette. Si avviano solo a mano da GitHub (browser = security,
+      # source = manual), d'accordo con il fornitore. Tutte le altre esecuzioni li escludono.
+      TEST_FILTER: ${{ (inputs.browser == 'security' && inputs.source != 'website') && '--filter TestCategory=Security' || '--filter TestCategory!=Security' }}
       HOME: /root
 
     steps:

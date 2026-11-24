@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
 using Allure.Net.Commons;
 using Allure.Net.Commons.Attributes;
@@ -31,6 +32,9 @@ public abstract class QualityLabTest : PageTest
     protected const string ExplainWhy = "explain_why";
     protected const string ExplainWhatEn = "explain_what_en";
     protected const string ExplainWhyEn = "explain_why_en";
+    // "Come sistemare": azione concreta quando il controllo non è verde (mostrata nella pagina riservata).
+    protected const string ExplainFix = "explain_fix";
+    protected const string ExplainFixEn = "explain_fix_en";
 
     // Priorità dei controlli. Allure non ha un livello "major": usiamo il suo "normal"
     // e la pagina Playground lo mostra come Major.
@@ -100,7 +104,7 @@ public abstract class QualityLabTest : PageTest
 
         if (_hostBlockedThisBrowser)
         {
-            Assert.Ignore($"Non verificabile: l'hosting ha già bloccato questo browser con un CAPTCHA ({ActualBrowser}).");
+            BlockedByAntiBot($"l'hosting ha già bloccato questo browser con la verifica anti-bot ({ActualBrowser}).");
         }
 
         _blockedByCaptcha = false;
@@ -165,11 +169,15 @@ public abstract class QualityLabTest : PageTest
     [TearDown]
     public async Task FinishTest()
     {
-        MarkBlockedTestsAsNotVerifiable();
-        await LiveProgress.ReportAsync(ActualBrowser, TestKey, LiveStatus());
+        var blockedNow = FailedBecauseOfAntiBot();
+        await LiveProgress.ReportAsync(ActualBrowser, TestKey, blockedNow || IsAntiBotResult() ? "skipped" : LiveStatus());
+        // Se il test è fallito mentre (o dopo che) l'hosting mostrava la verifica anti-bot, non è un errore
+        // del sito: lo trasformiamo in Broken lanciando l'eccezione dedicata (Allure registra come Broken
+        // le eccezioni del TearDown; cambiare il risultato a mano non basterebbe).
+        if (blockedNow) BlockedByAntiBot($"la protezione anti-bot dell'hosting ha mostrato un CAPTCHA durante il controllo ({ActualBrowser}).");
     }
 
-    // Esito per l'avanzamento in diretta, dopo l'eventuale correzione per il CAPTCHA.
+    // Esito per l'avanzamento in diretta.
     private static string LiveStatus() =>
         TestExecutionContext.CurrentContext.CurrentResult.ResultState.Status switch
         {
@@ -178,19 +186,14 @@ public abstract class QualityLabTest : PageTest
             _ => "failed",
         };
 
-    private void MarkBlockedTestsAsNotVerifiable()
+    private static bool IsAntiBotResult() =>
+        TestExecutionContext.CurrentContext.CurrentResult.Message?.Contains(AntiBotPrefix) == true;
+
+    private bool FailedBecauseOfAntiBot()
     {
-        // Se il test è fallito mentre (o dopo che) l'hosting mostrava un CAPTCHA, non è un errore del sito:
-        // trasformiamo l'esito in "ignorato", con il motivo. Assert.Ignore qui non basterebbe
-        // (NUnit terrebbe il fallimento): modifichiamo il risultato attraverso il contesto di esecuzione.
         var result = TestExecutionContext.CurrentContext.CurrentResult;
         var blocked = _blockedByCaptcha || Captcha.IsMatch(Page.Url) || AutomaticCheck.IsMatch(Page.Url);
-        if (blocked && result.ResultState.Status == TestStatus.Failed)
-        {
-            _hostBlockedThisBrowser = true; // i prossimi controlli di questo browser verranno saltati subito
-            result.SetResult(ResultState.Ignored,
-                $"Non verificabile: la protezione anti-bot dell'hosting ha mostrato un CAPTCHA ({ActualBrowser}).");
-        }
+        return blocked && result.ResultState.Status == TestStatus.Failed && !IsAntiBotResult();
     }
 
     // ---------------------------------------------------------------------
@@ -222,8 +225,35 @@ public abstract class QualityLabTest : PageTest
     // A volte SiteGround non mostra la pagina ma una verifica anti-bot:
     //   /.well-known/sgcaptcha/  → controllo automatico in JavaScript, poi carica il sito vero
     //   /.well-known/captcha/    → CAPTCHA da risolvere a mano: il test non può (e non deve) superarlo
-    // Nel secondo caso il controllo non è "fallito" ma "non verificabile": lo segniamo come ignorato,
-    // con il motivo, così un vero problema del sito resta rosso e un blocco dell'ambiente no.
+    // Alle richieste HTTP dirette può invece rispondere con 202 Accepted e l'header «SG-Captcha: challenge»
+    // al posto della risorsa. In tutti questi casi il requisito NON è stato verificato:
+    //   requisito soddisfatto → Passed · non soddisfatto → Failed · verifica impedita dall'anti-bot → Broken.
+    // Il Broken porta l'etichetta Allure «antibot»: Playground e dashboard lo mostrano come «non verificabile»
+    // (giallo), non come un problema del sito.
+
+    /// <summary>Etichetta Allure dei controlli bloccati dall'anti-bot (letta da scripts/summary.mjs).</summary>
+    public const string AntiBotLabel = "antibot";
+    private const string AntiBotPrefix = "Non verificabile:";
+
+    /// <summary>Segna il controllo come bloccato dall'anti-bot: Broken in Allure, «non verificabile» nelle pagine.</summary>
+    [DoesNotReturn]
+    protected static void BlockedByAntiBot(string detail)
+    {
+        _hostBlockedThisBrowser = true; // i prossimi controlli di questo browser vengono segnati subito
+        AllureApi.AddLabel(AntiBotLabel, "blocked");
+        throw new AntiBotBlockedException($"{AntiBotPrefix} {detail}");
+    }
+
+    /// <summary>True se il server ha risposto con la sfida anti-bot (202 Accepted + header SG-Captcha).</summary>
+    public static bool IsAntiBotChallenge(int status, IReadOnlyDictionary<string, string> headers) =>
+        status == 202 && headers.Keys.Any(k => k.Equals("sg-captcha", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Per le richieste HTTP dirette: se la risposta è la sfida anti-bot, il controllo diventa Broken.</summary>
+    protected static void ThrowIfAntiBot(IAPIResponse response, string url)
+    {
+        if (IsAntiBotChallenge(response.Status, response.Headers))
+            BlockedByAntiBot($"l'anti-bot dell'hosting ha risposto 202 con SG-Captcha al posto di {url}.");
+    }
 
     private static readonly Regex AutomaticCheck = new(@"/\.well-known/sgcaptcha/", RegexOptions.Compiled);
     private static readonly Regex Captcha = new(@"/\.well-known/captcha/", RegexOptions.Compiled);
@@ -241,6 +271,8 @@ public abstract class QualityLabTest : PageTest
             try
             {
                 var response = await Page.GotoAsync(url);
+                if (response is not null && IsAntiBotChallenge(response.Status, response.Headers))
+                    BlockedByAntiBot($"l'anti-bot dell'hosting ha risposto 202 con SG-Captcha ({ActualBrowser}).");
                 await SkipIfBlockedByBotProtectionAsync();
                 return response;
             }
@@ -278,9 +310,52 @@ public abstract class QualityLabTest : PageTest
         }
 
         if (Captcha.IsMatch(Page.Url) || AutomaticCheck.IsMatch(Page.Url))
+            BlockedByAntiBot($"la protezione anti-bot dell'hosting ha mostrato un CAPTCHA ({ActualBrowser}).");
+    }
+
+    // ---------------------------------------------------------------------
+    // Richieste HTTP resilienti (per i controlli via APIRequest)
+    // ---------------------------------------------------------------------
+    // L'anti-bot dell'hosting, dagli IP dei data center, a volte chiude la connessione
+    // (ECONNRESET / "socket hang up") o risponde con una pagina di sfida al posto della risorsa.
+    // Non è un problema del sito: ritentiamo e, se insiste, il controllo diventa Broken («non verificabile»).
+    private static readonly Regex DroppedByHost = new(
+        @"socket hang up|ECONNRESET|ECONNREFUSED|socket disconnected|network socket disconnected|read ECONN|EPIPE",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex BotWall = new(
+        @"\.well-known/(sg)?captcha|Robot Challenge", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    protected static async Task<IAPIResponse> GetResilientAsync(
+        IAPIRequestContext http, string url, APIRequestContextOptions? options = null)
+    {
+        const int attempts = 3;
+        for (var attempt = 1; ; attempt++)
         {
-            _hostBlockedThisBrowser = true; // i prossimi controlli di questo browser verranno saltati subito
-            Assert.Ignore($"Non verificabile: la protezione anti-bot dell'hosting ha mostrato un CAPTCHA ({ActualBrowser}).");
+            try
+            {
+                var response = await http.GetAsync(url, options);
+                ThrowIfAntiBot(response, url); // 202 + SG-Captcha: verifica impedita → Broken
+                return response;
+            }
+            catch (PlaywrightException ex) when (attempt < attempts && DroppedByHost.IsMatch(ex.Message))
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2 * attempt));
+            }
+            catch (PlaywrightException ex) when (DroppedByHost.IsMatch(ex.Message))
+            {
+                BlockedByAntiBot($"la protezione anti-bot dell'hosting ha chiuso la connessione ({url}).");
+            }
         }
     }
+
+    /// <summary>Se la risposta è la pagina di sfida anti-bot, il controllo diventa Broken («non verificabile»).</summary>
+    protected static void SkipIfBotWall(string body)
+    {
+        if (BotWall.IsMatch(body))
+            BlockedByAntiBot("la protezione anti-bot dell'hosting ha risposto al posto della risorsa.");
+    }
 }
+
+
+/// <summary>Verifica impedita dalla protezione anti-bot dell'hosting: Allure la registra come Broken.</summary>
+public sealed class AntiBotBlockedException(string message) : Exception(message);

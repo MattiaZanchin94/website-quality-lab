@@ -5,6 +5,7 @@ using Allure.Net.Commons.Attributes;
 namespace QualityLab.Tests;
 
 [TestFixture]
+[Category("Functional")]
 [Category("Smoke")]
 [AllureFeature("Disponibilità")]
 [AllureLabel(FeatureEn, "Availability")]

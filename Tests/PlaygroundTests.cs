@@ -6,6 +6,7 @@ using Microsoft.Playwright;
 namespace QualityLab.Tests;
 
 [TestFixture]
+[Category("Functional")]
 [Category("Regression")]
 [AllureFeature("Playground")]
 [AllureLabel(FeatureEn, "Playground")]
