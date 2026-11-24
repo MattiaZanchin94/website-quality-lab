@@ -157,11 +157,26 @@ jobs:
           path: bin/Release/net10.0/allure-results
           retention-days: 7
 
+      # Il job diventa rosso solo per problemi VERI del sito. I controlli bloccati dall'anti-bot
+      # dell'hosting sono Broken con l'etichetta "antibot" (vedi QualityLabTest): per dotnet test sono
+      # falliti, ma non dicono nulla sul sito, quindi qui non contano (la Playground li mostra in giallo).
       - name: Fail the job if tests failed
         if: steps.tests.outcome == 'failure'
         run: |
-          echo "::error::Uno o più test E2E sono falliti su ${{ matrix.browser }}."
-          exit 1
+          node -e '
+            const fs = require("fs"), dir = "bin/Release/net10.0/allure-results";
+            const results = fs.readdirSync(dir).filter((f) => f.endsWith("-result.json"))
+              .map((f) => JSON.parse(fs.readFileSync(dir + "/" + f, "utf8")));
+            const real = results.filter((r) => (r.status === "failed" || r.status === "broken")
+              && !(r.labels || []).some((l) => l.name === "antibot"));
+            const blocked = results.filter((r) => (r.labels || []).some((l) => l.name === "antibot")).length;
+            if (blocked) console.log(`::warning::${blocked} controlli non verificabili: l anti-bot dell hosting ha bloccato la verifica.`);
+            if (real.length) {
+              console.log(`::error::${real.length} controlli falliti su ${{ matrix.browser }}: ` + real.map((r) => r.name).join(" | "));
+              process.exit(1);
+            }
+            console.log("Nessun problema del sito: i fallimenti di dotnet test erano solo blocchi dell anti-bot.");
+          '
 
   # 2) Unisce i risultati dei browser, genera i report e pubblica i dati per il sito.
   publish:
