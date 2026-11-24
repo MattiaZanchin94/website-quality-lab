@@ -74,7 +74,6 @@ public abstract class MarketingBase : SeoDeepBase
 [Category("Marketing")]
 [AllureFeature("Misurazione")]
 [AllureLabel(FeatureEn, "Measurement")]
-[AllureSeverity(Major)]
 public class MarketingMeasurementTests : MarketingBase
 {
     [Category("Smoke")]
@@ -104,6 +103,7 @@ public class MarketingMeasurementTests : MarketingBase
     }
 
     [Category("Regression")]
+    [AllureSeverity(Major)]
     [Test]
     [AllureName("Un solo Google Analytics per pagina (nessun doppio conteggio)")]
     [AllureLabel(NameEn, "A single Google Analytics per page (no double counting)")]
@@ -135,6 +135,7 @@ public class MarketingMeasurementTests : MarketingBase
     }
 
     [Category("Regression")]
+    [AllureSeverity(Major)]
     [Test]
     [AllureName("Google Consent Mode v2 è attivo")]
     [AllureLabel(NameEn, "Google Consent Mode v2 is active")]
@@ -189,6 +190,7 @@ public class MarketingMeasurementTests : MarketingBase
     }
 
     [Category("Regression")]
+    [AllureSeverity(Major)]
     [Test]
     [AllureName("I parametri UTM delle campagne arrivano ad Analytics")]
     [AllureLabel(NameEn, "Campaign UTM parameters reach Analytics")]
@@ -222,7 +224,6 @@ public class MarketingMeasurementTests : MarketingBase
 [Category("Marketing")]
 [AllureFeature("Contatti e brand")]
 [AllureLabel(FeatureEn, "Contacts and brand")]
-[AllureSeverity(Major)]
 public class MarketingContactBrandTests : MarketingBase
 {
     // Nome del brand che deve comparire nel titolo di ogni pagina (risultati di Google, schede, condivisioni).
@@ -263,6 +264,7 @@ public class MarketingContactBrandTests : MarketingBase
     }
 
     [Category("Regression")]
+    [AllureSeverity(Major)]
     [Test]
     [AllureName("Il brand compare nel titolo di ogni pagina")]
     [AllureLabel(NameEn, "The brand appears in every page title")]
@@ -286,6 +288,7 @@ public class MarketingContactBrandTests : MarketingBase
     }
 
     [Category("Regression")]
+    [AllureSeverity(Major)]
     [Test]
     [AllureName("Un link sbagliato porta a una pagina 404 utile")]
     [AllureLabel(NameEn, "A broken link leads to a helpful 404 page")]
@@ -317,7 +320,6 @@ public class MarketingContactBrandTests : MarketingBase
 [Category("Marketing")]
 [AllureFeature("Anteprime e velocità")]
 [AllureLabel(FeatureEn, "Previews and speed")]
-[AllureSeverity(Major)]
 public class MarketingPreviewSpeedTests : MarketingBase
 {
     // Dimensioni consigliate da Facebook e LinkedIn per l'anteprima grande (1200 × 627/630).
@@ -325,6 +327,7 @@ public class MarketingPreviewSpeedTests : MarketingBase
     private const int MinHeight = 600;
 
     [Category("Regression")]
+    [AllureSeverity(Major)]
     [Test]
     [AllureName("L'immagine di anteprima social funziona su ogni pagina")]
     [AllureLabel(NameEn, "The social preview image works on every page")]
@@ -362,6 +365,7 @@ public class MarketingPreviewSpeedTests : MarketingBase
     private static readonly string[] LandingPages = ["/", "/software-testing/"];
 
     [Category("Regression")]
+    [AllureSeverity(Major)]
     [Test]
     [AllureName("Le pagine di atterraggio sono veloci da smartphone")]
     [AllureLabel(NameEn, "Landing pages are fast on smartphones")]

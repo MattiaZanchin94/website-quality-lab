@@ -82,10 +82,9 @@
       durationSecurity: "tempo dei controlli di sicurezza",
       ownerOnlyTitle: "🔒 Perché solo il proprietario può avviarli",
       ownerOnly:
-        "Alcuni controlli verificano che file riservati del sito (copie della configurazione, backup, log) non siano raggiungibili, " +
-        "e per farlo provano a richiederli. Per la protezione dell'hosting sono richieste sospette, uguali a quelle di un attacco: " +
-        "ripetute di continuo, fanno bloccare l'indirizzo che le invia. Per questo i controlli di sicurezza si avviano solo a mano, " +
-        "dal proprietario e d'accordo con il fornitore del sito. Qui sotto trovi i risultati dell'ultima verifica, con la data.",
+        "Per capire se il sito è ben protetto, alcuni di questi controlli si comportano come farebbe un curioso malintenzionato. " +
+        "La protezione dell'hosting non può distinguerli da un tentativo vero e, se si ripetono spesso, blocca chi li fa partire. " +
+        "Per questo li avvio io, ogni tanto e d'accordo con il fornitore del sito. Qui sotto trovi i risultati dell'ultima verifica, con la data.",
       durationSeo: "tempo dei controlli SEO",
       durationMarketing: "tempo dei controlli di marketing",
       seoNote:
@@ -119,9 +118,6 @@
       allDevices: "Tutti i dispositivi",
       autoOnly: "Solo nelle esecuzioni automatiche",
       manualOnly: "🔒 Avvio riservato al proprietario",
-      whyManual:
-        "Alcuni controlli di sicurezza provano a leggere file che non devono essere pubblici: per l'hosting sono richieste sospette. " +
-        "Per questo si avviano solo a mano, d'accordo con il fornitore. Qui trovi gli ultimi risultati.",
       tabsLabel: "Scegli il browser",
       tabsLabelMobile: "Scegli il dispositivo",
       noResults: "Nessun risultato ancora per questo browser: avvia i controlli per ottenerli.",
@@ -258,10 +254,9 @@
       durationSecurity: "time of the security checks",
       ownerOnlyTitle: "🔒 Why only the owner can start them",
       ownerOnly:
-        "Some checks verify that the site's private files (configuration copies, backups, logs) can't be reached, " +
-        "and to do that they try to request them. To the hosting protection these look like suspicious requests, the same as an attack: " +
-        "repeated all the time, they get the sending address blocked. That's why the security checks are started manually only, " +
-        "by the owner and in agreement with the site's provider. Below you'll find the results of the latest check, with its date.",
+        "To find out whether the site is well protected, some of these checks behave the way a nosy intruder would. " +
+        "The hosting protection can't tell them apart from a real attempt and, if they are repeated often, it blocks whoever starts them. " +
+        "That's why I start them myself, now and then and in agreement with the site's provider. Below you'll find the results of the latest check, with its date.",
       durationSeo: "time of the SEO checks",
       durationMarketing: "time of the marketing checks",
       seoNote:
@@ -294,9 +289,6 @@
       allDevices: "All devices",
       autoOnly: "Automatic runs only",
       manualOnly: "🔒 Started by the owner only",
-      whyManual:
-        "Some security checks try to read files that must not be public: to the hosting provider these look like suspicious requests. " +
-        "That's why they are started manually only, in agreement with the provider. Here you can see the latest results.",
       tabsLabel: "Choose the browser",
       tabsLabelMobile: "Choose the device",
       noResults: "No results yet for this browser: run the checks to get them.",
