@@ -72,12 +72,13 @@ public abstract class MarketingBase : SeoDeepBase
 /// <summary>Misurazione: Google Analytics installato bene, consenso, eventi e campagne.</summary>
 [TestFixture]
 [Category("Marketing")]
-[Category("Regression")]
 [AllureFeature("Misurazione")]
 [AllureLabel(FeatureEn, "Measurement")]
 [AllureSeverity(Major)]
 public class MarketingMeasurementTests : MarketingBase
 {
+    [Category("Smoke")]
+    [AllureSeverity(Blocker)]
     [Test]
     [AllureName("Google Analytics 4 è attivo su tutte le pagine chiave")]
     [AllureLabel(NameEn, "Google Analytics 4 is active on all key pages")]
@@ -102,6 +103,7 @@ public class MarketingMeasurementTests : MarketingBase
         Assert.That(missing, Is.Empty, "Nessun invio a Google Analytics 4 su: " + string.Join(", ", missing));
     }
 
+    [Category("Regression")]
     [Test]
     [AllureName("Un solo Google Analytics per pagina (nessun doppio conteggio)")]
     [AllureLabel(NameEn, "A single Google Analytics per page (no double counting)")]
@@ -132,6 +134,7 @@ public class MarketingMeasurementTests : MarketingBase
         Assert.That(problems, Is.Empty, string.Join("\n", problems));
     }
 
+    [Category("Regression")]
     [Test]
     [AllureName("Google Consent Mode v2 è attivo")]
     [AllureLabel(NameEn, "Google Consent Mode v2 is active")]
@@ -160,6 +163,8 @@ public class MarketingMeasurementTests : MarketingBase
         });
     }
 
+    [Category("Smoke")]
+    [AllureSeverity(Blocker)]
     [Test]
     [AllureName("Dopo il consenso le visite vengono misurate")]
     [AllureLabel(NameEn, "After consent, visits are measured")]
@@ -183,6 +188,7 @@ public class MarketingMeasurementTests : MarketingBase
             "Dopo «Accetta» Google riceve dati, ma nessuna page_view.");
     }
 
+    [Category("Regression")]
     [Test]
     [AllureName("I parametri UTM delle campagne arrivano ad Analytics")]
     [AllureLabel(NameEn, "Campaign UTM parameters reach Analytics")]
@@ -214,7 +220,6 @@ public class MarketingMeasurementTests : MarketingBase
 /// <summary>Contatti e brand: chi arriva trova come contattarti e riconosce il brand, anche da un link sbagliato.</summary>
 [TestFixture]
 [Category("Marketing")]
-[Category("Regression")]
 [AllureFeature("Contatti e brand")]
 [AllureLabel(FeatureEn, "Contacts and brand")]
 [AllureSeverity(Major)]
@@ -226,6 +231,8 @@ public class MarketingContactBrandTests : MarketingBase
     private static readonly Regex ContactHref = new(
         @"^(mailto:|tel:)|linkedin\.com/in/|/contatt|/contact|wa\.me/|calendly\.com/", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    [Category("Smoke")]
+    [AllureSeverity(Blocker)]
     [Test]
     [AllureName("Da ogni pagina chiave si trova come contattarti")]
     [AllureLabel(NameEn, "Every key page shows how to contact you")]
@@ -255,6 +262,7 @@ public class MarketingContactBrandTests : MarketingBase
         Assert.That(problems.Distinct(), Is.Empty, string.Join("\n", problems.Distinct()));
     }
 
+    [Category("Regression")]
     [Test]
     [AllureName("Il brand compare nel titolo di ogni pagina")]
     [AllureLabel(NameEn, "The brand appears in every page title")]
@@ -277,6 +285,7 @@ public class MarketingContactBrandTests : MarketingBase
         Assert.That(missing, Is.Empty, $"Titoli senza «{Brand}»:\n" + string.Join("\n", missing));
     }
 
+    [Category("Regression")]
     [Test]
     [AllureName("Un link sbagliato porta a una pagina 404 utile")]
     [AllureLabel(NameEn, "A broken link leads to a helpful 404 page")]
@@ -306,7 +315,6 @@ public class MarketingContactBrandTests : MarketingBase
 /// <summary>Anteprime e velocità: come appare il link condiviso e quanto è rapida la pagina da smartphone.</summary>
 [TestFixture]
 [Category("Marketing")]
-[Category("Regression")]
 [AllureFeature("Anteprime e velocità")]
 [AllureLabel(FeatureEn, "Previews and speed")]
 [AllureSeverity(Major)]
@@ -316,6 +324,7 @@ public class MarketingPreviewSpeedTests : MarketingBase
     private const int MinWidth = 1200;
     private const int MinHeight = 600;
 
+    [Category("Regression")]
     [Test]
     [AllureName("L'immagine di anteprima social funziona su ogni pagina")]
     [AllureLabel(NameEn, "The social preview image works on every page")]
@@ -352,6 +361,7 @@ public class MarketingPreviewSpeedTests : MarketingBase
     // Pagine su cui di solito arrivano i link delle campagne.
     private static readonly string[] LandingPages = ["/", "/software-testing/"];
 
+    [Category("Regression")]
     [Test]
     [AllureName("Le pagine di atterraggio sono veloci da smartphone")]
     [AllureLabel(NameEn, "Landing pages are fast on smartphones")]
