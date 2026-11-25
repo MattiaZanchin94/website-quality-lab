@@ -30,8 +30,8 @@ const explainOf = (r) => {
   return it.what || en.what ? { it, en } : null;
 };
 // Campetto del controllo, dalla categoria NUnit (diventa un tag Allure): Security, Seo, Marketing hanno
-// il loro campetto nella Playground; tutto il resto è Funzionalità.
-const AREA_OF_TAG = { security: "security", seo: "seo", marketing: "marketing" };
+// il loro campetto nella Playground; Accessibility si vede solo nella dashboard riservata; tutto il resto è Funzionalità.
+const AREA_OF_TAG = { security: "security", seo: "seo", marketing: "marketing", accessibility: "accessibility" };
 const areaOf = (r) => {
   for (const l of r.labels ?? []) if (l.name === "tag" && AREA_OF_TAG[l.value.toLowerCase()]) return AREA_OF_TAG[l.value.toLowerCase()];
   return "functional";
