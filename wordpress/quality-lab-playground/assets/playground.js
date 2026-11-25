@@ -77,8 +77,8 @@
       explainWhy: "Perché è importante",
       sections: { desktop: "💻 Computer", mobile: "📱 Smartphone e tablet" },
       securityNote:
-        "Questi controlli leggono le risposte del sito come farebbe un visitatore: connessione cifrata, certificato, " +
-        "protezioni inviate al browser e informazioni che WordPress non deve rivelare. Sono uguali per tutti i browser, quindi vengono verificati una volta, con Chrome.",
+        "Questi controlli verificano che il sito sia protetto come si deve: connessione sicura, certificato valido e impostazioni di protezione. " +
+        "Sono uguali per tutti i browser, quindi vengono verificati una volta, con Chrome.",
       durationSecurity: "tempo dei controlli di sicurezza",
       ownerOnlyTitle: "🔒 Perché solo il proprietario può avviarli",
       ownerOnly:
@@ -248,8 +248,8 @@
       explainWhy: "Why it matters",
       sections: { desktop: "💻 Desktop", mobile: "📱 Phones and tablets" },
       securityNote:
-        "These checks read the site's responses like a visitor would: encrypted connection, certificate, " +
-        "protections sent to the browser and information WordPress must not reveal. They're the same for every browser, so they're checked once, with Chrome.",
+        "These checks verify that the site is properly protected: secure connection, valid certificate and protection settings. " +
+        "They're the same for every browser, so they're checked once, with Chrome.",
       durationSecurity: "time of the security checks",
       ownerOnlyTitle: "🔒 Why only the owner can start them",
       ownerOnly:
