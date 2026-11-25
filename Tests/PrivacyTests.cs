@@ -6,8 +6,9 @@ namespace QualityLab.Tests;
 
 /// <summary>
 /// Conformità al GDPR: il sito non deve tracciare chi non ha dato il consenso.
-/// Il test si comporta come un visitatore nuovo che rifiuta i cookie e controlla
-/// che cosa succede davvero nel browser, non solo che il banner sia presente.
+/// Ogni test si comporta come un visitatore nuovo e controlla
+/// che cosa succede davvero nel browser, non solo che il banner sia presente:
+/// prima della scelta, dopo il rifiuto e dopo l'accettazione.
 /// </summary>
 [TestFixture]
 [Category("Privacy")]
@@ -20,39 +21,38 @@ public class PrivacyTests : QualityLabTest
     private static readonly Regex ConsentOnlyServices = new(@"^https?://([^/]+\.)?jam\.dev/", RegexOptions.Compiled);
 
     [Test]
-    [AllureName("Il sito rispetta il consenso ai cookie")]
-    [AllureLabel(NameEn, "The site respects cookie consent")]
-    [AllureDescription("Prima della scelta e dopo il rifiuto, il sito non imposta i cookie di Google Analytics, " +
-                       "invia a Google solo segnali senza consenso e non carica Jam. La scelta viene ricordata tra le pagine.")]
+    [AllureName("Prima della scelta il sito non traccia nulla")]
+    [AllureLabel(NameEn, "Nothing is tracked before the visitor chooses")]
+    [AllureDescription("Un visitatore nuovo vede il banner con «Accetta» e «Nega» sullo stesso piano. Finché non sceglie, " +
+                       "il sito non imposta i cookie di Google Analytics, invia a Google solo segnali senza consenso e non carica Jam.")]
     [AllureSeverity(Major)]
-    public async Task SiteRespectsCookieConsent()
+    [AllureLabel("order", "1")]
+    public async Task NothingIsTrackedBeforeChoice()
     {
-        // Qui il banner lo gestisce il test, come farebbe un visitatore.
-        await LetTestHandleCookieBannerAsync();
-
-        var consentOnlyRequests = new List<string>();
-        Page.Request += (_, request) =>
-        {
-            if (ConsentOnlyServices.IsMatch(request.Url)) consentOnlyRequests.Add(request.Url);
-        };
-
-        // 1. Visitatore nuovo: il banner chiede il consenso, con "Accetta" e "Nega" sullo stesso piano.
-        await OpenAsync(BaseUrl);
-        var accept = Page.GetByRole(AriaRole.Button, new() { Name = "Accetta", Exact = true });
-        var deny = Page.GetByRole(AriaRole.Button, new() { Name = "Nega", Exact = true });
-        await Expect(accept).ToBeVisibleAsync(new() { Timeout = 15_000 });
-        await Expect(deny).ToBeVisibleAsync();
+        var consentOnlyRequests = await StartAsNewVisitorAsync();
 
         await WaitForAnalyticsAsync();
         await ExpectNoTrackingAsync("prima della scelta", consentOnlyRequests);
+    }
 
-        // 2. Il visitatore rifiuta.
+    [Test]
+    [AllureName("Se il visitatore rifiuta i cookie, il sito non traccia nulla")]
+    [AllureLabel(NameEn, "Nothing is tracked after the visitor declines cookies")]
+    [AllureDescription("Il visitatore preme «Nega» e passa a un'altra pagina: il banner non ricompare, il rifiuto è salvato " +
+                       "e il sito continua a non impostare i cookie di Google Analytics, a inviare solo segnali senza consenso e a non caricare Jam.")]
+    [AllureSeverity(Major)]
+    [AllureLabel("order", "2")]
+    public async Task NothingIsTrackedAfterDeclining()
+    {
+        var consentOnlyRequests = await StartAsNewVisitorAsync();
+        var deny = Page.GetByRole(AriaRole.Button, new() { Name = "Nega", Exact = true });
         await deny.ClickAsync();
         await Expect(deny).ToBeHiddenAsync();
 
-        // 3. Su un'altra pagina la scelta è ricordata: il banner non ricompare.
+        // Su un'altra pagina la scelta è ricordata: il banner non ricompare.
         // (Il pulsante "Gestisci consenso" non si controlla qui: su schermi piccoli Complianz lo nasconde.)
         BlockedAnalyticsHits.Clear();
+        consentOnlyRequests.Clear();
         await OpenAsync(BaseUrl + "/carriera/");
         await WaitForAnalyticsAsync();
         await Expect(deny).ToBeHiddenAsync();
@@ -61,6 +61,57 @@ public class PrivacyTests : QualityLabTest
         Assert.That(statistics?.Value, Is.EqualTo("deny"), "Il rifiuto delle statistiche non è stato salvato.");
 
         await ExpectNoTrackingAsync("dopo il rifiuto", consentOnlyRequests);
+    }
+
+    [Test]
+    [AllureName("Se il visitatore accetta i cookie, le statistiche si attivano")]
+    [AllureLabel(NameEn, "Statistics start once the visitor accepts cookies")]
+    [AllureDescription("Il visitatore preme «Accetta» e passa a un'altra pagina: il banner non ricompare, il consenso è salvato, " +
+                       "Google Analytics imposta i suoi cookie e invia a Google le visite con il consenso alle statistiche. " +
+                       "Gli invii vengono comunque bloccati dal test: le statistiche del sito restano pulite.")]
+    [AllureSeverity(Major)]
+    [AllureLabel("order", "3")]
+    public async Task StatisticsStartAfterAccepting()
+    {
+        await StartAsNewVisitorAsync();
+        var accept = Page.GetByRole(AriaRole.Button, new() { Name = "Accetta", Exact = true });
+        await accept.ClickAsync();
+        await Expect(accept).ToBeHiddenAsync();
+
+        BlockedAnalyticsHits.Clear();
+        await OpenAsync(BaseUrl + "/carriera/");
+        await WaitForAnalyticsAsync();
+        await Expect(accept).ToBeHiddenAsync();
+
+        var cookies = await Context.CookiesAsync();
+        var statistics = cookies.FirstOrDefault(c => c.Name == "cmplz_statistics");
+        Assert.That(statistics?.Value, Is.EqualTo("allow"), "Il consenso alle statistiche non è stato salvato.");
+        Assert.That(cookies.Select(c => c.Name), Has.Some.StartsWith("_ga"),
+            "Dopo l'accettazione Google Analytics non ha impostato i suoi cookie: le statistiche non partono.");
+        // gcs=G1x1: il terzo carattere dopo la "G" è il consenso alle statistiche (1 = concesso).
+        Assert.That(BlockedAnalyticsHits.Any(h => Regex.IsMatch(h, @"[?&]gcs=G1\d1")), Is.True,
+            "Dopo l'accettazione Google Analytics non ha inviato visite con il consenso alle statistiche.");
+    }
+
+    /// <summary>
+    /// Visitatore nuovo: il test gestisce da sé il banner, apre la Home e verifica che il banner offra
+    /// «Accetta» e «Nega» sullo stesso piano. Restituisce l'elenco (che si riempie da solo) delle richieste
+    /// ai servizi che possono partire solo con il consenso.
+    /// </summary>
+    private async Task<List<string>> StartAsNewVisitorAsync()
+    {
+        await LetTestHandleCookieBannerAsync();
+
+        var consentOnlyRequests = new List<string>();
+        Page.Request += (_, request) =>
+        {
+            if (ConsentOnlyServices.IsMatch(request.Url)) consentOnlyRequests.Add(request.Url);
+        };
+
+        await OpenAsync(BaseUrl);
+        await Expect(Page.GetByRole(AriaRole.Button, new() { Name = "Accetta", Exact = true })).ToBeVisibleAsync(new() { Timeout = 15_000 });
+        await Expect(Page.GetByRole(AriaRole.Button, new() { Name = "Nega", Exact = true })).ToBeVisibleAsync();
+        return consentOnlyRequests;
     }
 
     /// <summary>
