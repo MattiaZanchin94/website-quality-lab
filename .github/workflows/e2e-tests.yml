@@ -73,7 +73,8 @@ jobs:
       #   - partita SEO / Marketing (browser = seo / marketing): solo quei controlli;
       #   - Chromium nelle esecuzioni orarie, nei push e negli avvii manuali: funzionalità + SEO + Marketing;
       #   - partite di funzionalità avviate dagli ospiti e gli altri browser: solo funzionalità.
-      TEST_FILTER: ${{ (inputs.browser == 'security' && inputs.source != 'website') && '--filter TestCategory=Security' || inputs.browser == 'seo' && '--filter TestCategory=Seo' || inputs.browser == 'marketing' && '--filter TestCategory=Marketing' || (matrix.browser == 'chromium' && inputs.source != 'website') && '--filter TestCategory!=Security' || '--filter TestCategory!=Security&TestCategory!=Seo&TestCategory!=Marketing' }}
+      # L'accessibilità non gira qui: i suoi controlli si avviano dalla dashboard riservata.
+      TEST_FILTER: ${{ (inputs.browser == 'security' && inputs.source != 'website') && '--filter TestCategory=Security' || inputs.browser == 'seo' && '--filter TestCategory=Seo' || inputs.browser == 'marketing' && '--filter TestCategory=Marketing' || (matrix.browser == 'chromium' && inputs.source != 'website') && '--filter TestCategory!=Security&TestCategory!=Accessibility' || '--filter TestCategory!=Security&TestCategory!=Seo&TestCategory!=Marketing&TestCategory!=Accessibility' }}
       HOME: /root
 
     steps:
